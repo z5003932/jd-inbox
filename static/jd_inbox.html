@@ -2752,7 +2752,8 @@ document.getElementById('search').addEventListener('input', (e) => {
 // ---------- DROP ZONE (visual only) ----------
 const dz = document.getElementById('drop-zone');
 ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
-['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));dz.addEventListener('drop', async e => {
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));
+dz.addEventListener('drop', async e => {
   const files = Array.from(e.dataTransfer.files || []);
   if (!files.length) return;
   
@@ -2771,8 +2772,11 @@ const dz = document.getElementById('drop-zone');
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       
       const job = await res.json();
-      state.jobs.unshift(job);
-      toast(`✓ ${file.name} uploaded`, 'success');
+    toast(`✓ ${file.name} uploaded`, 'success');
+
+    // Reload jobs from API
+    const listRes = await fetch('/api/jobs');
+    state.jobs = await listRes.json();
     } catch (err) {
       toast(`✗ ${file.name} failed: ${err.message}`, 'error');
     }

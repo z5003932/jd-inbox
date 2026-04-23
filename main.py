@@ -62,15 +62,15 @@ async def health_check():
 @app.get("/api/jobs")
 async def list_jobs():
     """Get all jobs for the table"""
-    db = get_db()
-    jobs = db.execute("""
-        SELECT id, filename, role, company, sector, mode, source,
-               status, score, tier, brief, created_at, updated_at
-        FROM jobs
-        ORDER BY created_at DESC
-    """).fetchall()
-    
-    return [dict(row) for row in jobs]
+    with get_db() as db:
+        jobs = db.execute("""
+            SELECT id, filename, role, company, sector, mode, source,
+                   status, score, tier, brief, created_at, updated_at
+            FROM jobs
+            ORDER BY created_at DESC
+        """).fetchall()
+        
+        return [dict(row) for row in jobs]
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

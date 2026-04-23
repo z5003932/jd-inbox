@@ -1,0 +1,2789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JD Inbox — dav</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-panel: #121212;
+    --bg-row: #141414;
+    --bg-row-hover: #1c1c1c;
+    --bg-row-selected: #1f1a14;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --text: #e8e8e8;
+    --text-dim: #8a8a8a;
+    --text-faint: #5a5a5a;
+    --accent: #FF6B35;
+    --accent-dim: #a04020;
+    --green: #22c55e;
+    --amber: #eab308;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --purple: #a855f7;
+    --shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow: hidden;
+    height: 100vh;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  /* ---- HEADER ---- */
+  header.topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    height: 56px;
+    flex-shrink: 0;
+  }
+  .title {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .title-icon { color: var(--accent); font-size: 16px; }
+  .title-sub { color: var(--text-dim); font-weight: 400; margin-left: 8px; }
+  .count-badge {
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-left: 4px;
+  }
+
+  .search-box {
+    flex: 1;
+    max-width: 360px;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 10px 7px 32px;
+    font-size: 12px;
+    font-family: inherit;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box input:focus { border-color: var(--accent-dim); }
+  .search-box::before {
+    content: '⌕';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-size: 14px;
+    pointer-events: none;
+  }
+  .search-box .hint {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 2px 5px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  .filter-group { display: flex; gap: 8px; }
+  .filter-select {
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 11px;
+    font-family: inherit;
+    border-radius: 4px;
+    cursor: pointer;
+    outline: none;
+  }
+  .filter-select:hover { border-color: var(--border-strong); }
+
+  .queue-indicator {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .queue-indicator .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  .queue-indicator.processing .dot { background: var(--amber); }
+  .queue-indicator .progress-track {
+    width: 60px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .queue-indicator .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    width: 15%;
+    transition: width 0.3s;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ---- DROP ZONE ---- */
+  .drop-zone {
+    padding: 22px 24px;
+    background: linear-gradient(180deg, var(--bg-panel) 0%, rgba(18,18,18,0.6) 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    transition: all 0.2s;
+    flex-shrink: 0;
+    border: 1px dashed transparent;
+  }
+  .drop-zone.drag-over {
+    background: rgba(255, 107, 53, 0.08);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .drop-zone-icon {
+    color: var(--text-faint);
+    font-size: 28px;
+    line-height: 1;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+  }
+  .drop-zone.drag-over .drop-zone-icon { color: var(--accent); border-color: var(--accent); }
+  .drop-zone strong { color: var(--text); font-weight: 500; }
+  .drop-zone-text { flex: 1; }
+  .drop-zone-text .primary { color: var(--text); font-weight: 500; margin-bottom: 2px; font-size: 13px; }
+  .drop-zone-text .secondary { color: var(--text-faint); font-size: 11px; }
+  .drop-zone-formats {
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  /* ---- MAIN TABLE ---- */
+  main {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+  .layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  thead th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 500;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    user-select: none;
+  }
+  thead th.sortable { cursor: pointer; }
+  thead th.sortable:hover { color: var(--text-dim); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--bg-row-hover); }
+  tbody tr.selected {
+    background: var(--bg-row-selected);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  tbody tr.selected td { color: var(--text); }
+  tbody tr.pending-rapid {
+    background: rgba(234, 179, 8, 0.04);
+    border-left: 2px solid rgba(234, 179, 8, 0.3);
+  }
+  tbody tr.pending-rapid:hover {
+    background: rgba(234, 179, 8, 0.08);
+  }
+
+  td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    color: var(--text);
+  }
+  td.role-cell { min-width: 200px; max-width: 240px; }
+  td.company-cell { min-width: 140px; max-width: 160px; color: var(--text-dim); }
+  td.role-cell .role-title {
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  td.company-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  td.brief-cell {
+    color: var(--text-dim);
+    font-size: 11px;
+    max-width: 380px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  td.meta-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* Status icon column */
+  .status-icon {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-pending { background: var(--text-faint); }
+  .status-rapid { background: var(--blue); }
+  .status-tier { background: var(--amber); }
+  .status-cv { background: var(--purple); }
+  .status-applied { background: var(--green); }
+  .status-skipped { background: var(--border-strong); opacity: 0.5; }
+
+  /* Score badge */
+  .score-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    min-width: 42px;
+    text-align: center;
+  }
+  .score-high { background: rgba(34, 197, 94, 0.12); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.25); }
+  .score-mid  { background: rgba(234, 179, 8, 0.12); color: var(--amber); border: 1px solid rgba(234, 179, 8, 0.25); }
+  .score-low  { background: rgba(239, 68, 68, 0.12); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.25); }
+  .score-none { background: var(--bg-row); color: var(--text-faint); border: 1px solid var(--border); }
+  .score-pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: var(--amber);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    font-size: 10px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    animation: pulse-pending 2s infinite;
+    cursor: pointer;
+  }
+  .score-pending:hover {
+    background: rgba(234, 179, 8, 0.25);
+    border-color: var(--amber);
+  }
+  @keyframes pulse-pending {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* Tier badge */
+  .tier-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .tier-badge .tier-letter {
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .tier-badge .tier-desc {
+    font-family: 'Geist', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0;
+    opacity: 0.9;
+  }
+  .tier-A { background: rgba(59, 130, 246, 0.15); color: var(--blue); }
+  .tier-B { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+  .tier-C { background: rgba(234, 179, 8, 0.15); color: var(--amber); }
+  .tier-D { background: rgba(168, 85, 247, 0.18); color: var(--purple); }
+  .tier-SKIP { background: var(--bg-row); color: var(--text-faint); border: 1px solid var(--border); }
+  .tier-none { color: var(--text-faint); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 3px 7px; }
+
+  /* Sector pill */
+  .sector-pill {
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .work-mode {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  /* ---- FOOTER SHORTCUT BAR ---- */
+  footer.shortcut-bar {
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--text-dim);
+    height: 40px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    box-shadow: 0 1px 0 var(--border);
+  }
+  .shortcut-item .desc { color: var(--text-faint); }
+  .shortcut-bar .ctx-label {
+    color: var(--accent);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-right: 8px;
+    font-weight: 600;
+  }
+  .shortcut-bar .help-hint {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- SIDEBAR CHAT ---- */
+  .chat-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 520px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    box-shadow: 10px 0 40px rgba(0,0,0,0.6);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+  }
+  .chat-sidebar.open { transform: translateX(0); }
+
+  .chat-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .chat-header-text { flex: 1; min-width: 0; }
+  .chat-role {
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 2px;
+  }
+  .chat-company {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chat-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .chat-action-btn {
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .chat-action-btn:hover:not(:disabled) {
+    background: var(--bg-row-hover);
+    border-color: var(--border-strong);
+  }
+  .chat-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .chat-action-btn.primary {
+    background: rgba(255, 107, 53, 0.12);
+    border-color: rgba(255, 107, 53, 0.3);
+    color: var(--accent);
+  }
+  .chat-action-btn.primary:hover:not(:disabled) {
+    background: rgba(255, 107, 53, 0.2);
+    border-color: var(--accent);
+  }
+  .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 6px;
+    line-height: 1;
+  }
+  .close-btn:hover { color: var(--text); }
+
+  .chat-tier-bar {
+    padding: 8px 16px;
+    background: var(--bg-row);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .chat-tier-bar .label { color: var(--text-faint); }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .msg.claude {
+    align-self: flex-start;
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.2);
+  }
+  .msg .role-tag {
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .msg strong { color: var(--text); font-weight: 600; }
+  .msg .flag-list { margin-top: 6px; padding-left: 14px; }
+  .msg .flag-list li { margin: 2px 0; }
+  .msg ul { padding-left: 18px; margin: 4px 0; }
+
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+  .input-wrap {
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    transition: border-color 0.15s;
+  }
+  .input-wrap:focus-within { border-color: var(--accent-dim); }
+  .input-wrap textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12.5px;
+    outline: none;
+    resize: none;
+    min-height: 20px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+  .send-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .send-btn:hover { filter: brightness(1.1); }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 40px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    max-width: 720px;
+    width: 100%;
+    max-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-role {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .modal-company-line {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .modal-company-line a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 11px;
+  }
+  .modal-company-line a:hover { text-decoration: underline; }
+
+  .modal-score-row {
+    padding: 16px 24px;
+    display: flex;
+    gap: 24px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .modal-score-item .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+  .modal-score-item .value {
+    font-size: 16px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-section {
+    margin-bottom: 18px;
+  }
+  .modal-section h4 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .modal-section p {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .flag-list {
+    list-style: none;
+    padding: 0;
+  }
+  .flag-list li {
+    padding: 4px 0 4px 18px;
+    position: relative;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .flag-list.green li::before {
+    content: '+';
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .flag-list.red li::before {
+    content: '−';
+    position: absolute;
+    left: 0;
+    color: var(--red);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .action-btn {
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .action-btn:hover {
+    background: var(--bg-row-hover);
+    border-color: var(--border-strong);
+  }
+  .action-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .action-btn.primary:hover { filter: brightness(1.1); }
+  .action-btn.danger { color: var(--red); }
+  .action-btn .key {
+    margin-left: 4px;
+    font-size: 9px;
+  }
+
+  /* ---- MODAL TABS ---- */
+  .modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    gap: 2px;
+  }
+  .modal-tab {
+    padding: 11px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+  }
+  .modal-tab:hover { color: var(--text); }
+  .modal-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .modal-tab-key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-faint);
+    padding: 2px 5px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-weight: 400;
+  }
+  .modal-tab.active .modal-tab-key {
+    color: var(--accent);
+    border-color: rgba(255, 107, 53, 0.3);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---- JD CONTENT ---- */
+  .jd-content {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text);
+    font-family: 'Geist', -apple-system, sans-serif;
+  }
+  .jd-content .jd-title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .jd-content .jd-company-line {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .jd-content .jd-company-line .co { color: var(--text); font-weight: 500; }
+  .jd-content .jd-meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 24px;
+    padding: 12px 14px;
+    background: var(--bg-row);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 22px;
+    font-size: 11.5px;
+  }
+  .jd-content .jd-meta-strip .item { display: flex; flex-direction: column; gap: 2px; }
+  .jd-content .jd-meta-strip .label {
+    color: var(--text-faint);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+  .jd-content .jd-meta-strip .value { color: var(--text); font-weight: 500; }
+  .jd-content .jd-meta-strip .value.link { color: var(--accent); cursor: pointer; }
+  .jd-content .jd-meta-strip .value.link:hover { text-decoration: underline; }
+  .jd-content h2 {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin: 22px 0 10px 0;
+    font-weight: 600;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .jd-content h2:first-child { margin-top: 0; }
+  .jd-content p { margin-bottom: 10px; color: var(--text); }
+  .jd-content ul { list-style: none; padding-left: 0; margin: 6px 0 14px 0; }
+  .jd-content ul li {
+    padding: 4px 0 4px 16px;
+    position: relative;
+    color: var(--text);
+  }
+  .jd-content ul li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .jd-content .jd-lead {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text);
+    padding: 14px 16px;
+    background: rgba(255, 107, 53, 0.04);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 20px;
+  }
+  .jd-content strong { color: var(--text); font-weight: 600; }
+  .jd-content .jd-salary {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--green);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .jd-content .jd-empty {
+    text-align: center;
+    color: var(--text-faint);
+    padding: 60px 20px;
+    font-size: 12.5px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+  }
+  .jd-content .jd-empty-icon { font-size: 28px; margin-bottom: 10px; display: block; color: var(--text-faint); }
+
+  /* Loading indicator for chat */
+  .thinking-dots {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .thinking-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--text-faint);
+    border-radius: 50%;
+    animation: thinking 1.2s infinite;
+  }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes thinking {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.9); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Shortcut cheatsheet */
+  .cheatsheet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .cheatsheet-group h5 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .cheatsheet-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .cheatsheet-item:last-child { border-bottom: none; }
+  .cheatsheet-item .desc { color: var(--text-dim); }
+  .cheatsheet-item .keys {
+    display: flex;
+    gap: 4px;
+  }
+
+  /* Context menu */
+  .ctx-menu {
+    position: fixed;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    padding: 4px;
+    z-index: 150;
+    min-width: 200px;
+    display: none;
+  }
+  .ctx-menu.open { display: block; }
+  .ctx-item {
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+  .ctx-item:hover { background: var(--bg-row-hover); }
+  .ctx-item .ctx-shortcut {
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .ctx-separator {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 60px;
+    right: 24px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    box-shadow: var(--shadow);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.2s;
+  }
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.info { border-left: 3px solid var(--blue); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+  /* Empty state */
+  .empty-msg {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="title">
+      <span class="title-icon">⚡</span>
+      <span>JD Inbox</span>
+      <span class="title-sub">dav</span>
+      <span class="count-badge" id="count-badge">0</span>
+    </div>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search role, company, sector..." />
+      <span class="hint">/</span>
+    </div>
+    <div class="filter-group">
+      <select class="filter-select" id="filter-status">
+        <option value="">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="rapid">Rapid done</option>
+        <option value="tier">Tier set</option>
+        <option value="cv">CV generated</option>
+        <option value="applied">Applied</option>
+        <option value="skipped">Skipped</option>
+      </select>
+      <select class="filter-select" id="filter-tier">
+        <option value="">All tiers</option>
+        <option value="A">Tier A</option>
+        <option value="B">Tier B</option>
+        <option value="C">Tier C</option>
+        <option value="D">Tier D</option>
+        <option value="SKIP">Skip</option>
+      </select>
+      <select class="filter-select" id="filter-score">
+        <option value="">All scores</option>
+        <option value="high">7+ only</option>
+        <option value="mid">5–6</option>
+        <option value="low">Under 5</option>
+      </select>
+    </div>
+    <div class="queue-indicator processing" id="queue">
+      <span class="dot"></span>
+      <span id="queue-text">2 processing / 13 ready</span>
+      <div class="progress-track"><div class="progress-bar" id="queue-bar"></div></div>
+    </div>
+  </header>
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-zone-icon">⬇</div>
+    <div class="drop-zone-text">
+      <div class="primary">Drop JD files here</div>
+      <div class="secondary">or watching folder <strong style="color: var(--text-dim);">~/Claude/jd_inbox/</strong> — new files auto-extract and appear in the table</div>
+    </div>
+    <div class="drop-zone-formats">PDF · DOCX · PNG · JPG · HTML · TXT</div>
+  </div>
+
+  <!-- MAIN TABLE -->
+  <main>
+    <table id="jd-table">
+      <thead>
+        <tr>
+          <th style="width: 30px;"></th>
+          <th class="sortable">Role</th>
+          <th class="sortable">Company</th>
+          <th class="sortable" style="width: 70px;">Score</th>
+          <th style="width: 170px;">Tier</th>
+          <th style="width: 120px;">Sector</th>
+          <th style="width: 60px;">Mode</th>
+          <th>Fit brief</th>
+          <th class="sortable" style="width: 100px;">Posted</th>
+          <th class="sortable" style="width: 90px;">Source</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </main>
+
+  <!-- FOOTER SHORTCUT BAR -->
+  <footer class="shortcut-bar" id="footer">
+    <span class="ctx-label" id="ctx-label">Inbox</span>
+    <span class="shortcut-item"><span class="key">↑↓</span><span class="desc">Nav</span></span>
+    <span class="shortcut-item"><span class="key">↵</span><span class="desc">Details</span></span>
+    <span class="shortcut-item"><span class="key">→</span><span class="desc">Chat</span></span>
+    <span class="shortcut-item"><span class="key">R</span><span class="desc">Rapid</span></span>
+    <span class="shortcut-item"><span class="key">A</span>/<span class="key">B</span>/<span class="key">C</span>/<span class="key">D</span><span class="desc">Tier</span></span>
+    <span class="shortcut-item"><span class="key">X</span><span class="desc">Skip</span></span>
+    <span class="shortcut-item"><span class="key">⌃L</span><span class="desc">Letter</span></span>
+    <span class="help-hint"><span class="key">?</span><span class="desc">All shortcuts</span></span>
+  </footer>
+
+</div>
+
+<!-- SIDEBAR CHAT -->
+<aside class="chat-sidebar" id="sidebar">
+  <div class="chat-header">
+    <div class="chat-header-text">
+      <div class="chat-role" id="sb-role">—</div>
+      <div class="chat-company">
+        <span id="sb-company">—</span>
+        <span style="color: var(--text-faint);">•</span>
+        <span id="sb-sector" style="color: var(--text-faint);">—</span>
+      </div>
+    </div>
+    <button class="close-btn" onclick="closeSidebar()" title="Close (Esc)">×</button>
+  </div>
+
+  <div class="chat-tier-bar">
+    <span class="label">Fit</span>
+    <span id="sb-score" class="mono" style="font-weight: 600;">—</span>
+    <span class="label">Tier</span>
+    <span id="sb-tier" class="mono" style="font-weight: 600;">—</span>
+    <div style="margin-left: auto; display: flex; gap: 6px;">
+      <button class="chat-action-btn" id="btn-cv" disabled title="Set tier first">
+        Generate CV
+      </button>
+      <button class="chat-action-btn primary" id="btn-letter" disabled title="Set tier first">
+        Cover letter
+      </button>
+    </div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea id="msg-input" placeholder="Reply to Claude about this JD..." rows="1"></textarea>
+      <button class="send-btn" onclick="sendMessage()">↵</button>
+    </div>
+    <div style="margin-top: 6px; font-size: 10px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace;">
+      ⌘↵ send · ⇧↵ new line · ⌃R re-run rapid · ⌃K commands
+    </div>
+  </div>
+</aside>
+
+<!-- FIT SUMMARY MODAL -->
+<div class="modal-overlay" id="fit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-role" id="mod-role">—</div>
+      <div class="modal-company-line">
+        <span id="mod-company">—</span>
+        <span>•</span>
+        <span id="mod-sector">—</span>
+        <span>•</span>
+        <span id="mod-posted" class="mono">—</span>
+        <span>•</span>
+        <a id="mod-url" href="#" target="_blank">View original →</a>
+      </div>
+    </div>
+    <div class="modal-score-row">
+      <div class="modal-score-item">
+        <div class="label">Fit score</div>
+        <div class="value" id="mod-score">—</div>
+      </div>
+      <div class="modal-score-item">
+        <div class="label">Tier</div>
+        <div class="value" id="mod-tier">—</div>
+      </div>
+      <div class="modal-score-item">
+        <div class="label">Archetype</div>
+        <div class="value" id="mod-archetype" style="font-size: 13px;">—</div>
+      </div>
+      <div class="modal-score-item">
+        <div class="label">Recommend</div>
+        <div class="value" id="mod-rec" style="font-size: 13px;">—</div>
+      </div>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab="fit" onclick="switchTab('fit')">
+        Fit Analysis <span class="modal-tab-key">1</span>
+      </button>
+      <button class="modal-tab" data-tab="jd" onclick="switchTab('jd')">
+        Job Description <span class="modal-tab-key">2</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- FIT TAB -->
+      <div class="tab-panel active" data-tab="fit">
+        <div class="modal-section">
+          <h4>Why</h4>
+          <p id="mod-why">—</p>
+        </div>
+        <div class="modal-section">
+          <h4>Green flags</h4>
+          <ul class="flag-list green" id="mod-green"></ul>
+        </div>
+        <div class="modal-section">
+          <h4>Red flags</h4>
+          <ul class="flag-list red" id="mod-red"></ul>
+        </div>
+        <div class="modal-section">
+          <h4>Unstated selection filter</h4>
+          <p id="mod-filter">—</p>
+        </div>
+      </div>
+
+      <!-- JD TAB -->
+      <div class="tab-panel" data-tab="jd">
+        <div class="jd-content" id="mod-jd">
+          <div class="jd-empty">
+            <span class="jd-empty-icon">📄</span>
+            Loading job description...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="action-btn" onclick="runRapid()">↻ Re-run Rapid<span class="key">R</span></button>
+      <button class="action-btn" onclick="openSidebarFromModal()">💬 Open Chat<span class="key">→</span></button>
+      <button class="action-btn primary" onclick="generateCV()">Generate CV</button>
+      <button class="action-btn" onclick="generateLetter()">Cover Letter<span class="key">⌃L</span></button>
+      <button class="action-btn danger" onclick="skipJD()">Skip<span class="key">X</span></button>
+      <button class="action-btn" onclick="markApplied()">Mark Applied<span class="key">␣</span></button>
+      <button class="action-btn" style="margin-left: auto;" onclick="closeModal()">Close<span class="key">Esc</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- SHORTCUT CHEATSHEET MODAL -->
+<div class="modal-overlay" id="help-modal">
+  <div class="modal" style="max-width: 640px;">
+    <div class="modal-header">
+      <div class="modal-role">Keyboard shortcuts</div>
+      <div class="modal-company-line">JD Inbox for dav</div>
+    </div>
+    <div class="modal-body">
+      <div class="cheatsheet-grid">
+
+        <div class="cheatsheet-group">
+          <h5>Navigation</h5>
+          <div class="cheatsheet-item"><span class="desc">Move up / down</span><span class="keys"><span class="key">↑</span><span class="key">↓</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Move up / down (vim)</span><span class="keys"><span class="key">k</span><span class="key">j</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Jump to top</span><span class="keys"><span class="key">g</span><span class="key">g</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Jump to bottom</span><span class="keys"><span class="key">G</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Focus search</span><span class="keys"><span class="key">/</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Clear search</span><span class="keys"><span class="key">Esc</span></span></div>
+        </div>
+
+        <div class="cheatsheet-group">
+          <h5>Row actions</h5>
+          <div class="cheatsheet-item"><span class="desc">Open fit details</span><span class="keys"><span class="key">↵</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Open chat sidebar</span><span class="keys"><span class="key">→</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Run JD Rapid</span><span class="keys"><span class="key">R</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Set tier A / B / C / D</span><span class="keys"><span class="key">A</span><span class="key">B</span><span class="key">C</span><span class="key">D</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Skip</span><span class="keys"><span class="key">X</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Mark applied</span><span class="keys"><span class="key">Space</span></span></div>
+        </div>
+
+        <div class="cheatsheet-group">
+          <h5>Modal (Fit Details)</h5>
+          <div class="cheatsheet-item"><span class="desc">Next tab</span><span class="keys"><span class="key">Tab</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Previous tab</span><span class="keys"><span class="key">⇧</span><span class="key">Tab</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Jump to Fit tab</span><span class="keys"><span class="key">1</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Jump to JD tab</span><span class="keys"><span class="key">2</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Open chat for this JD</span><span class="keys"><span class="key">→</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Close modal</span><span class="keys"><span class="key">Esc</span></span></div>
+        </div>
+
+        <div class="cheatsheet-group">
+          <h5>Sidebar</h5>
+          <div class="cheatsheet-item"><span class="desc">Close sidebar</span><span class="keys"><span class="key">Esc</span> / <span class="key">←</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Send message</span><span class="keys"><span class="key">⌘</span><span class="key">↵</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">New line</span><span class="keys"><span class="key">⇧</span><span class="key">↵</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Re-run Rapid</span><span class="keys"><span class="key">⌃</span><span class="key">R</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Generate CV</span><span class="keys"><span class="key">⌃</span><span class="key">V</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Cover letter</span><span class="keys"><span class="key">⌃</span><span class="key">L</span></span></div>
+        </div>
+
+        <div class="cheatsheet-group">
+          <h5>Global</h5>
+          <div class="cheatsheet-item"><span class="desc">Command palette</span><span class="keys"><span class="key">⌘</span><span class="key">K</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Show this cheatsheet</span><span class="keys"><span class="key">?</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Run bulk Rapid</span><span class="keys"><span class="key">⌘</span><span class="key">⇧</span><span class="key">R</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Toggle drop zone</span><span class="keys"><span class="key">⌃</span><span class="key">D</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Refresh from folder</span><span class="keys"><span class="key">⌘</span><span class="key">R</span></span></div>
+          <div class="cheatsheet-item"><span class="desc">Close any overlay</span><span class="keys"><span class="key">Esc</span></span></div>
+        </div>
+
+      </div>
+
+      <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);">
+        <h5 style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 14px; font-weight: 600;">CV Generation Tiers</h5>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: var(--bg-row); border-radius: 4px;">
+            <span class="tier-badge tier-A" style="flex-shrink: 0;"><span class="tier-letter">A</span><span class="tier-desc">Upload as-is</span></span>
+            <div style="flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.55;">Generic PM CV, no changes. Use when the fit score is 8+ and the generic already covers it cleanly.</div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: var(--bg-row); border-radius: 4px;">
+            <span class="tier-badge tier-B" style="flex-shrink: 0;"><span class="tier-letter">B</span><span class="tier-desc">Fast CV</span></span>
+            <div style="flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.55;">~5 min. Relabel tagline, rewrite summary, generate fresh JD-targeted Career Highlights, rename file. Use when tagline/summary need role-specific framing.</div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: var(--bg-row); border-radius: 4px;">
+            <span class="tier-badge tier-C" style="flex-shrink: 0;"><span class="tier-letter">C</span><span class="tier-desc">Targeted tweak</span></span>
+            <div style="flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.55;">~15–20 min. Fast CV plus bullet rewrites for 1–2 roles most needing reframing. Focused Pass 1 search, no full two-pass sweep.</div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: var(--bg-row); border-radius: 4px;">
+            <span class="tier-badge tier-D" style="flex-shrink: 0;"><span class="tier-letter">D</span><span class="tier-desc">Full engine</span></span>
+            <div style="flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.55;">Full engine run. Steps 0–8, full corpus search across all 26 companies, gap audit, framing audit, complete tailoring. Use when there's a genuine evidence gap only full story search can close.</div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: var(--bg-row); border-radius: 4px;">
+            <span class="tier-badge tier-SKIP" style="flex-shrink: 0;"><span class="tier-letter">×</span><span class="tier-desc">Skip</span></span>
+            <div style="flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.55;">Pass. Fit score under 5, wrong archetype, or hard filter makes screen-out near-certain.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="action-btn" style="margin-left: auto;" onclick="closeModal()">Close<span class="key">Esc</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="openFitModal()"><span>View fit details</span><span class="ctx-shortcut">↵</span></div>
+  <div class="ctx-item" onclick="openSidebar()"><span>Open chat</span><span class="ctx-shortcut">→</span></div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="runRapid()"><span>Run JD Rapid</span><span class="ctx-shortcut">R</span></div>
+  <div class="ctx-item" onclick="setTier('A')"><span>Set tier A</span><span class="ctx-shortcut">A</span></div>
+  <div class="ctx-item" onclick="setTier('B')"><span>Set tier B</span><span class="ctx-shortcut">B</span></div>
+  <div class="ctx-item" onclick="setTier('C')"><span>Set tier C</span><span class="ctx-shortcut">C</span></div>
+  <div class="ctx-item" onclick="setTier('D')"><span>Set tier D</span><span class="ctx-shortcut">D</span></div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="generateCV()"><span>Generate CV</span></div>
+  <div class="ctx-item" onclick="generateLetter()"><span>Generate cover letter</span><span class="ctx-shortcut">⌃L</span></div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="markApplied()"><span>Mark applied</span><span class="ctx-shortcut">␣</span></div>
+  <div class="ctx-item" onclick="skipJD()" style="color: var(--red);"><span>Skip</span><span class="ctx-shortcut">X</span></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- MOCK DATA ----------
+// In production:
+// - Files DROPPED into the HTML interface → auto-Rapid runs immediately, row appears with score/tier populated
+// - Files appearing via FOLDER WATCH (/Users/dav/Claude/jd_inbox/) → row appears with status='pending', user presses R manually
+// - Each job tracks source_type: 'drop' vs 'folder_watch' to determine auto-Rapid behavior
+const jobs = [
+  {
+    id: 1, role: 'AI Transformation Lead', company: 'Virgin Australia', sector: 'Aviation',
+    mode: 'HYB', posted: '2026-04-19', source: 'LinkedIn', url: 'https://linkedin.com/jobs/3829',
+    status: 'rapid', score: 8, tier: 'D', archetype: 'AI Transformation Lead',
+    recommend: 'Apply',
+    brief: 'Strong match on AI + regulated enterprise. Risk: no aviation domain.',
+    why: 'Direct match on AI transformation archetype and regulated enterprise context. Production AI pipelines (CANDEO, NHVR Claude) and WMQ transformation scale map cleanly. Primary risk is sector: no aviation experience will show through in screening if the filter is domain-first rather than capability-first.',
+    green: [
+      'Built production AI pipelines (CANDEO, NHVR Claude API orchestration)',
+      'Regulated enterprise transformation at scale — WMQ 11 business units, LGIAsuper merger',
+      'Senior stakeholder management in highly political environments (NHVR, Westpac)'
+    ],
+    red: [
+      'No aviation sector experience — likely hard filter for panel',
+      'JD uses "transformation programme" — signals change/PM lead, not IC product',
+      'Sydney-based, relocation implied'
+    ],
+    filter: '"Has this person survived a top-down AI transformation in a regulated industry?" — enterprise AI delivery experience, not just personal-use tool fluency. Answer: yes (NHVR). Case is credible but needs framing in cover letter.'
+  },
+  {
+    id: 2, role: 'Payments Product Manager', company: 'Alex Bank', sector: 'Fintech',
+    mode: 'BNE', posted: '2026-04-21', source: 'Seek', url: 'https://seek.com.au/job/83920',
+    status: 'rapid', score: 8, tier: 'B',
+    archetype: 'Senior PM — Payments',
+    recommend: 'Apply',
+    brief: 'Direct Westpac + AGC fit. Tagline and summary rewrite gets it there.',
+    why: 'AGC multi-party payment platform work (Apple Pay, Google Wallet, Indue, eftpos) is directly on-point. Westpac STAR Award adds commercial credibility. Generic PM CV covers 85% — a Fast CV with payments-tilted Career Highlights and tagline is sufficient.',
+    green: [
+      'AGC payment platform: certified with Apple, Google, eftpos, Indue — exact payments PM territory',
+      'Westpac $2.5M STAR Award — named commercial recognition, rare',
+      'Brisbane-local, immediate availability'
+    ],
+    red: [
+      'No challenger-bank specific experience (but AGC was fintech-adjacent)',
+      'Alex Bank is small team — culture fit matters; no obvious risk in CV'
+    ],
+    filter: '"Has this person shipped payment rails in a regulated environment?" — AGC answers this directly. Low risk.'
+  },
+  {
+    id: 3, role: 'Head of Product Delivery', company: 'Fitness & Lifestyle Group', sector: 'Consumer',
+    mode: 'HYB', posted: '2026-03-24', source: 'Direct', url: 'https://flgroup.com.au/careers/847',
+    status: 'applied', score: 7, tier: 'C', archetype: 'Head of Product Delivery',
+    recommend: 'Apply with caveats',
+    brief: 'Applied 26 Mar. Domain gap acknowledged in cover letter. Waiting.',
+    why: 'Team leadership, delivery governance, multi-brand B2C coverage — WMQ and Terem client portfolio map well. Fitness domain is a real gap named directly rather than papered over.',
+    green: [
+      'WMQ 11 BU transformation — closest analogue to multi-brand delivery complexity',
+      'Terem portfolio: 11 client engagements across B2C retail (Pet Circle, LMG)',
+      'Delivery governance track record in regulated environments'
+    ],
+    red: [
+      'No fitness sector experience (named in cover letter)',
+      'Head of title — stretch on management scale evidence'
+    ],
+    filter: '"Can this person run 8+ PMs across 4 brands?" — management scale is the thinnest part of the story.'
+  },
+  {
+    id: 4, role: 'Principal AI Experience Designer', company: 'MYOB', sector: 'SaaS',
+    mode: 'HYB', posted: '2026-04-15', source: 'LinkedIn', url: 'https://linkedin.com/jobs/3811',
+    status: 'cv', score: 7, tier: 'D', archetype: 'Principal AI UX',
+    recommend: 'Apply',
+    brief: 'CV generated 18 Apr. Applied pending recruiter callback.',
+    why: 'Principal IC AI role maps to CANDEO + Rimon HITL pipeline work. Main fit question: visual/interaction design depth vs product strategy depth. JD leans strategy-heavy.',
+    green: [
+      'CANDEO end-to-end AI product ownership (solo build)',
+      'Rimon four-stage HITL pipeline architecture',
+      'MBE OCR/LLM evaluation across cloud providers'
+    ],
+    red: [
+      'Title says "Experience Designer" — UX craft depth uncertain',
+      'MYOB is big-co politics — fit signals matter'
+    ],
+    filter: '"Can this person make product strategy calls on AI feature behaviour that UX can execute?" — answerable from CANDEO and Rimon work.'
+  },
+  {
+    id: 5, role: 'Senior Product Manager — Revenue', company: 'Heidi Health', sector: 'Healthtech',
+    mode: 'REM', posted: '2026-04-20', source: 'Recruiter', url: 'https://heidihealth.com/careers',
+    status: 'tier', score: 8, tier: 'D', archetype: 'Senior PM — Growth',
+    recommend: 'Apply',
+    brief: 'Healthtech + AI-native + revenue PM. Tier D queued.',
+    why: 'AI-native healthtech SPM with revenue ownership. BPEH healthcare platform, MBE healthtech billing, CANDEO AI build — three-way fit. Revenue-PM pattern is the least demonstrated dimension.',
+    green: [
+      'MBE healthcare billing platform — direct healthtech product context',
+      'BPEH pharmacy eye health deployment — B2C + regulated health',
+      'CANDEO: AI product practitioner with production pipeline'
+    ],
+    red: [
+      'Revenue PM specifically — AARRR signals exist but no dedicated "revenue PM" title',
+      'Remote-first team — async/written-first collaboration needs proving'
+    ],
+    filter: '"Can this person move an AI-native product\'s revenue metric?" — needs CANDEO commercialisation framing to answer.'
+  },
+  {
+    id: 6, role: 'Principal Product Manager', company: 'Entain ANZ', sector: 'iGaming',
+    mode: 'HYB', posted: '2026-04-22', source: 'Seek', url: 'https://seek.com.au/job/84102',
+    status: 'pending', score: null, tier: null, archetype: null,
+    recommend: null,
+    brief: '—',
+    why: null, green: [], red: [], filter: null
+  },
+  {
+    id: 7, role: 'BA — AI & Automation', company: 'UpGuard', sector: 'Cybersec',
+    mode: 'REM', posted: '2026-04-17', source: 'LinkedIn', url: 'https://linkedin.com/jobs/3798',
+    status: 'rapid', score: 8, tier: 'C', archetype: 'Senior BA — AI',
+    recommend: 'Apply',
+    brief: 'AI-adjacent BA with automation. CANDEO + Rimon directly relevant.',
+    why: 'BA title, AI & automation focus. Exact capability match — ironically a stronger fit than most "PM" roles. Pipeline engineering experience (CANDEO) is hard to find in a BA pool.',
+    green: [
+      'CANDEO production pipeline — direct evidence of automation ownership',
+      'Rimon HITL workflow design — LLM eval and trigger detection',
+      'NHVR Claude integration — regulated AI tooling track record'
+    ],
+    red: [
+      'Cybersec domain unfamiliar — workable if CANDEO reframed as security-tilted',
+      'Remote-first global team — timezone fit needs mentioning'
+    ],
+    filter: '"Is this person a BA in title or a BA in actual capability?" — easily answered by CANDEO architecture depth.'
+  },
+  {
+    id: 8, role: 'Shopify Product Manager', company: 'Okendo', sector: 'SaaS',
+    mode: 'REM', posted: '2026-04-18', source: 'LinkedIn', url: 'https://linkedin.com/jobs/3802',
+    status: 'rapid', score: 5, tier: 'C', archetype: 'Senior PM — Ecommerce SaaS',
+    recommend: 'Apply with caveats',
+    brief: 'Ecommerce SaaS fit partial. Shopify ecosystem experience thin.',
+    why: 'Adjacent rather than direct. Pet Circle and LMG give ecommerce context, but Shopify app ecosystem is unfamiliar. Tier C covers it by reframing Pet Circle bullets around acquisition mechanics.',
+    green: [
+      'Pet Circle B2C ecommerce — mobile app, checkout, acquisition funnel',
+      'LMG retail loyalty — ecommerce attribution and promotional mechanics',
+      'SaaS product experience in TradeWindow, Transformd'
+    ],
+    red: [
+      'No Shopify app/platform experience specifically',
+      'Reviews and UGC product category adjacent, not direct'
+    ],
+    filter: '"Has this person built inside the Shopify ecosystem?" — no. Offset with ecommerce + SaaS pattern adjacency.'
+  },
+  {
+    id: 9, role: 'Core HR Product Manager', company: 'Dayforce', sector: 'HRTech',
+    mode: 'SYD', posted: '2026-04-20', source: 'Direct', url: 'https://dayforce.com/careers/2839',
+    status: 'pending', score: null, tier: null, archetype: null,
+    recommend: null,
+    brief: '—',
+    why: null, green: [], red: [], filter: null
+  },
+  {
+    id: 10, role: 'B2B SaaS Product Manager', company: 'TradeWindow', sector: 'LogisTech',
+    mode: 'REM', posted: '2026-02-18', source: 'LinkedIn', url: 'https://linkedin.com/jobs/3711',
+    status: 'applied', score: 7, tier: 'B', archetype: 'Senior PM — B2B SaaS',
+    recommend: 'Apply',
+    brief: 'Applied 21 Feb via Carolyn Ong intro (Karmo). No callback yet.',
+    why: 'B2B SaaS PM with regulated/compliance tilt. Transformd Corporations Act work, TRM Pet Circle, LMG retail loyalty programme design — directly applicable.',
+    green: [
+      'Transformd no-code platform with Corporations Act compliance translation',
+      'Terem engagement breadth across 11 B2B clients',
+      'Carolyn Ong warm intro (was at TradeWindow, now Karmo)'
+    ],
+    red: [
+      'Logistics/customs domain unfamiliar',
+      'NZ HQ — timezone and travel expectations unclear'
+    ],
+    filter: '"Has this person shipped B2B SaaS to regulated markets?" — yes, multiple times.'
+  },
+  {
+    id: 11, role: 'Digital Experience & Lifecycle Lead', company: 'Foot Locker APAC', sector: 'Retail',
+    mode: 'SYD', posted: '2026-04-10', source: 'LinkedIn', url: 'https://linkedin.com/jobs/3780',
+    status: 'skipped', score: 3, tier: 'SKIP', archetype: 'Lifecycle CRM Lead',
+    recommend: 'Pass',
+    brief: 'Seniority mismatch. No ecommerce CRM execution evidence.',
+    why: 'Wrong archetype. The JD wants hands-on CRM lifecycle execution (Braze, Klaviyo, triggered campaigns, cohort analysis). Evidence base has adjacent work but no direct lifecycle CRM execution. Screen-out risk is high.',
+    green: [
+      'B2C ecommerce familiarity (Pet Circle, LMG)',
+      'Customer analytics and segmentation (Expekt LTV)'
+    ],
+    red: [
+      'No Braze / Klaviyo / Iterable experience — CRM tool filter will catch this',
+      'No lifecycle/triggered campaign execution evidence',
+      'Sydney-based full time, retail apparel sector is a stretch'
+    ],
+    filter: '"Has this person run 50+ email lifecycle flows?" — no. Hard pass.'
+  },
+  {
+    id: 12, role: 'Senior iGaming Product Manager', company: 'Dabble', sector: 'iGaming',
+    mode: 'BNE', posted: '2026-03-08', source: 'Seek', url: 'https://seek.com.au/job/82930',
+    status: 'skipped', score: 5, tier: 'SKIP', archetype: 'Senior PM — iGaming',
+    recommend: 'Pass',
+    brief: 'Pay-to-play game PM experience is the hard filter. Expekt too dated.',
+    why: 'Expekt wagering experience is from 2009–2010 — too dated at 0.4 recency weight. Dabble wants someone who has shipped Tier 1 pay-to-play game features in the last 3 years. No path to answering that honestly.',
+    green: [
+      'Expekt B2C wagering platform (historical)',
+      'Brisbane local'
+    ],
+    red: [
+      'No recent Tier 1 pay-to-play game PM work',
+      'Gamification and live ops unfamiliar',
+      'iGaming regulatory vocabulary stale'
+    ],
+    filter: '"Shipped a pay-to-play game feature to scale in the last 3 years?" — no.'
+  },
+  {
+    id: 13, role: 'Technical BA — Conversational Search', company: 'QUT', sector: 'Higher Ed',
+    mode: 'BNE', posted: '2026-04-14', source: 'Direct', url: 'https://careers.qut.edu.au/3829',
+    status: 'tier', score: 7, tier: 'C', archetype: 'Technical BA — AI',
+    recommend: 'Apply',
+    brief: 'Contract. AI-native BA fits CANDEO story. Brisbane local wins.',
+    why: 'Contract BA role with AI focus. Brisbane-based, contract nature matches fractional bridge strategy. CANDEO and Rimon provide production AI BA credibility.',
+    green: [
+      'QUT alumnus — cultural fit built in',
+      'CANDEO production AI work',
+      'Rimon HITL pipeline architecture'
+    ],
+    red: [
+      'Higher ed domain unfamiliar',
+      'Contract-only — needs financial bridge reasoning'
+    ],
+    filter: '"Brisbane-local AI-capable BA" — direct answer.'
+  },
+  {
+    id: 14, role: 'Head of Product', company: 'H&L POS', sector: 'POS/Hospitality',
+    mode: 'BNE', posted: '2026-02-28', source: 'Recruiter', url: '',
+    status: 'applied', score: 7, tier: 'D', archetype: 'Head of Product',
+    recommend: 'Apply',
+    brief: 'Applied via Haydn Furness. Progressed to round 2, awaiting final.',
+    why: 'Head of Product at a mature POS platform. Terem engagement breadth + Transformd product ownership + WMQ leadership map to the role. Hospitality domain is a stretch but workable.',
+    green: [
+      'WMQ capability-build with 11 BU coordination',
+      'Transformd product ownership across 4 client platforms',
+      'Haydn warm intro + recommendation'
+    ],
+    red: [
+      'Hospitality sector unfamiliar',
+      'No previous "Head of Product" title — stretch framing'
+    ],
+    filter: '"Can this person run product across 40 engineers?" — the scale question."'
+  },
+  {
+    id: 15, role: 'Principal Consultant — AI', company: 'Terem Technologies', sector: 'Consulting',
+    mode: 'BNE', posted: '2026-04-23', source: 'Direct', url: 'https://terem.tech/careers',
+    status: 'pending', score: null, tier: null, archetype: null,
+    recommend: null,
+    brief: '—',
+    why: null, green: [], red: [], filter: null
+  }
+];
+
+// ---------- MOCK JD CONTENT (per job id) ----------
+const jd_content_map = {
+  1: `
+    <div class="jd-title">AI Transformation Lead</div>
+    <div class="jd-company-line"><span class="co">Virgin Australia</span> · Aviation · Sydney (hybrid)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent, full-time</span></div>
+      <div class="item"><span class="label">Reports to</span><span class="value">Chief Digital Officer</span></div>
+      <div class="item"><span class="label">Team size</span><span class="value">6–8 direct reports</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$220k–$260k + super + bonus</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">19 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      Virgin Australia is scaling AI across operations, customer experience, and crew productivity. We're looking for a senior leader to define and deliver this transformation, partnering with executives to identify use cases and build the capability to ship them at pace.
+    </div>
+
+    <h2>About the role</h2>
+    <p>As AI Transformation Lead, you'll own the enterprise AI roadmap and deliver it through a team of AI product managers and delivery leads. This isn't a pure strategy role — you'll be expected to get into the detail of specific use cases, make build-vs-buy calls, and ship measurable outcomes.</p>
+
+    <h2>Key responsibilities</h2>
+    <ul>
+      <li>Define and deliver the enterprise-wide AI transformation roadmap across commercial, operations, and customer experience</li>
+      <li>Partner with business unit leaders to identify, prioritise, and frame high-value AI opportunities</li>
+      <li>Establish AI governance frameworks covering data, ethics, model risk, and regulatory compliance (CASA, Privacy Act, incoming AU AI Act)</li>
+      <li>Lead a cross-functional team of 6–8 AI product managers, delivery leads, and technical specialists</li>
+      <li>Own vendor and platform strategy — evaluate Azure OpenAI, AWS Bedrock, Anthropic, and niche aviation vendors</li>
+      <li>Report transformation outcomes to the Executive Leadership Team monthly and the Board quarterly</li>
+      <li>Build internal AI literacy across the broader leadership cohort</li>
+    </ul>
+
+    <h2>What we're looking for</h2>
+    <ul>
+      <li>10+ years in senior product, technology, or transformation roles, with at least 3 years leading AI or ML delivery at scale</li>
+      <li>Demonstrated success shipping production AI/ML products that moved a business metric</li>
+      <li>Strong grasp of generative AI, MLOps, model evaluation, and responsible AI frameworks</li>
+      <li>Experience in aviation, transport, or comparable highly-regulated asset-intensive industries preferred</li>
+      <li>Excellent executive communication — you can brief a CEO on model risk and a senior engineer on go-to-market</li>
+      <li>Proven capability managing AI product managers (not just engineers)</li>
+    </ul>
+
+    <h2>Nice to have</h2>
+    <ul>
+      <li>Experience with customer-facing conversational AI at scale</li>
+      <li>Familiarity with crew scheduling, operational recovery, or revenue management domains</li>
+      <li>Prior consulting background (McKinsey Digital, BCG X, or Big 4 AI practice)</li>
+    </ul>
+
+    <h2>What we offer</h2>
+    <ul>
+      <li>Generous staff travel benefits for you, your partner, and immediate family</li>
+      <li>Hybrid work model — 3 days in our Sydney CBD office, 2 days flexible</li>
+      <li>20 weeks paid parental leave, available from day one</li>
+      <li>Discounted Virgin Active gym membership, Virgin Money offers, and wellbeing programs</li>
+      <li>Access to our internal coaching program and senior leadership development cohort</li>
+    </ul>
+  `,
+  2: `
+    <div class="jd-title">Payments Product Manager</div>
+    <div class="jd-company-line"><span class="co">Alex Bank</span> · Digital challenger bank · Brisbane</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent, full-time</span></div>
+      <div class="item"><span class="label">Reports to</span><span class="value">Head of Product</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$160k–$185k + super</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">21 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      Alex Bank is a licensed digital bank reshaping how Australians save, spend, and borrow. We're hiring a Senior PM to own our payments product — new rails, new use cases, and the commercial roadmap that turns them into growth.
+    </div>
+
+    <h2>The role</h2>
+    <p>You'll own our payments product end-to-end: the existing card and payment rails, the next generation of integrations (PayTo, NPP, Apple Pay / Google Pay expansions), and the commercial roadmap tying payments to deposits and lending growth. You'll work with a squad of 6 engineers, 1 designer, and 1 analyst.</p>
+
+    <h2>What you'll do</h2>
+    <ul>
+      <li>Own the payments product P&L — revenue, interchange, fraud cost, customer acquisition cost attributable to payments</li>
+      <li>Define and ship the PayTo integration (highest strategic priority for 2026)</li>
+      <li>Expand our Apple Pay and Google Pay offerings into new card products</li>
+      <li>Manage our certification and compliance footprint with Visa, eftpos, Indue, and the regulator</li>
+      <li>Partner with Risk on the fraud, AML, and transaction monitoring roadmap</li>
+      <li>Run the commercial cases for new payment features, including pricing and unit economics</li>
+    </ul>
+
+    <h2>You'll bring</h2>
+    <ul>
+      <li>5+ years in product management, at least 2 years in payments or financial services</li>
+      <li>Deep understanding of Australian payments — NPP, PayTo, BECS, card schemes, eftpos</li>
+      <li>Demonstrated experience managing vendor certification (Apple, Google, card schemes, Indue)</li>
+      <li>Commercial orientation — comfortable owning a P&L and making pricing calls</li>
+      <li>Strong execution track record in regulated environments</li>
+    </ul>
+
+    <h2>Bonus points</h2>
+    <ul>
+      <li>Prior challenger bank or neobank experience</li>
+      <li>Background in fraud or financial crime product</li>
+      <li>Experience with open banking / CDR data sharing</li>
+    </ul>
+
+    <h2>What you get</h2>
+    <ul>
+      <li>Meaningful equity in a profitable, growing challenger bank</li>
+      <li>Brisbane CBD office, hybrid flexibility</li>
+      <li>Small, senior team — direct access to founders and the exec</li>
+      <li>Strong parental leave policy and genuine flexibility</li>
+    </ul>
+  `,
+  3: `
+    <div class="jd-title">Head of Product Delivery</div>
+    <div class="jd-company-line"><span class="co">Fitness & Lifestyle Group</span> · Consumer / Fitness · Sydney (hybrid)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent, full-time</span></div>
+      <div class="item"><span class="label">Reports to</span><span class="value">Chief Product Officer</span></div>
+      <div class="item"><span class="label">Team size</span><span class="value">~8 PMs across 4 brands</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$200k–$230k + super</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">24 March 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      We operate four leading fitness and lifestyle brands (Fitness First, Goodlife, Barry's, and Jetts) across ANZ, SE Asia, and Europe. We're hiring a Head of Product Delivery to drive execution discipline and outcome quality across our digital product teams.
+    </div>
+
+    <h2>The opportunity</h2>
+    <p>Our product organisation has been reshaped over the last 18 months. We now need a senior leader who can bring delivery rigour, governance discipline, and a consistent outcome-measurement framework across four brands, 300+ clubs, and 2M+ members.</p>
+
+    <h2>Responsibilities</h2>
+    <ul>
+      <li>Lead a team of 8 PMs across our four consumer brands plus internal platform products</li>
+      <li>Define and enforce our delivery operating model (discovery → delivery → measurement)</li>
+      <li>Own the quarterly planning cadence and dependency management across brands</li>
+      <li>Partner with Engineering leadership on release management, tech debt, and capacity planning</li>
+      <li>Report delivery health and outcome metrics to the CPO and CEO</li>
+      <li>Coach PMs on outcome measurement and data-informed decision-making</li>
+    </ul>
+
+    <h2>You are</h2>
+    <ul>
+      <li>A senior PM leader with 8+ years in product, including 3+ years managing other PMs</li>
+      <li>Experienced running a product delivery function across multiple products or brands</li>
+      <li>A rigorous operator — you've designed and rolled out planning cadences, delivery metrics, and governance rituals</li>
+      <li>Genuinely interested in consumer product and member experience</li>
+      <li>Ideally experienced in fitness, wellness, retail, or subscription-led consumer sectors</li>
+    </ul>
+
+    <h2>Benefits</h2>
+    <ul>
+      <li>Complimentary membership across all FLG brands for you and one family member</li>
+      <li>Hybrid working — Sydney HQ 3 days, WFH 2 days</li>
+      <li>16 weeks paid parental leave</li>
+      <li>Annual wellness allowance and paid volunteer day</li>
+    </ul>
+  `,
+  4: `
+    <div class="jd-title">Principal AI Experience Designer</div>
+    <div class="jd-company-line"><span class="co">MYOB</span> · Business SaaS · Melbourne / Sydney (hybrid)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Reports to</span><span class="value">VP AI</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$210k–$240k + super + equity</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">15 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      MYOB is embedding AI across our accounting, payroll, and business management suite. We're looking for a Principal AI Experience Designer — someone who sits between product, design, and AI to define how our generative and agentic AI features actually feel to small business users.
+    </div>
+
+    <h2>About the role</h2>
+    <p>This is a senior IC role. You won't manage a team, but you will influence a product org of 80+. You'll own the definition of our AI product patterns — how we handle uncertainty, hallucination, handoffs to humans, progressive disclosure of AI reasoning, and trust-building in automated workflows.</p>
+
+    <h2>What you'll own</h2>
+    <ul>
+      <li>AI experience patterns library — the reusable interaction models our PM and design teams build on</li>
+      <li>Evaluation frameworks for AI feature quality (beyond model metrics — user trust, task completion, error recovery)</li>
+      <li>Prompt architecture and context engineering standards for user-facing AI features</li>
+      <li>The research agenda for understanding how SMB users interact with AI in financial workflows</li>
+      <li>Cross-functional working with ML engineering, product, and design leadership</li>
+    </ul>
+
+    <h2>What we need from you</h2>
+    <ul>
+      <li>7+ years of product or design experience, with at least 2 years shipping AI-powered features</li>
+      <li>Strong grasp of LLM capabilities and limitations — you can articulate why a feature will or won't work without running an experiment</li>
+      <li>Demonstrated systems thinking — you design patterns, not just screens</li>
+      <li>Experience writing evals, designing HITL workflows, or working on agentic systems</li>
+      <li>Portfolio or case studies showing shipped AI product work</li>
+    </ul>
+  `,
+  5: `
+    <div class="jd-title">Senior Product Manager — Revenue</div>
+    <div class="jd-company-line"><span class="co">Heidi Health</span> · AI Healthtech · Remote (Australia)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Team</span><span class="value">Growth & Revenue</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$180k–$210k + meaningful equity</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">20 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      Heidi is the AI medical scribe trusted by 50,000+ clinicians globally. We're hiring our first dedicated Revenue PM to own conversion, pricing, packaging, and expansion across our clinician and enterprise segments.
+    </div>
+
+    <h2>The role</h2>
+    <p>You'll own the revenue surface of the product — everything that influences how users find value fast, convert to paid, expand usage, and stay. This sits at the intersection of product, growth marketing, and data. You'll work directly with our co-founders.</p>
+
+    <h2>What you'll do</h2>
+    <ul>
+      <li>Own the conversion funnel from first-scribe-generated to paid subscriber</li>
+      <li>Define and ship pricing and packaging changes — including our enterprise and clinic-group motions</li>
+      <li>Design and run experimentation against revenue and retention metrics</li>
+      <li>Partner with the AI team on feature gating and usage-based pricing exploration</li>
+      <li>Build the dashboard and insight rhythm that keeps revenue questions live for the exec team</li>
+    </ul>
+
+    <h2>You</h2>
+    <ul>
+      <li>5+ years of PM experience with at least 2 years owning revenue, growth, or monetisation</li>
+      <li>Fluent in AARRR / North Star metric / cohort analysis</li>
+      <li>Comfortable with SQL and experiment design</li>
+      <li>Ideally experienced in B2B SaaS with a PLG motion</li>
+      <li>Bonus: healthtech or regulated market background</li>
+    </ul>
+  `,
+  7: `
+    <div class="jd-title">Business Analyst — AI & Automation</div>
+    <div class="jd-company-line"><span class="co">UpGuard</span> · Cybersecurity / TPRM · Remote (Australia-based)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Team</span><span class="value">Platform / AI</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$140k–$165k + super + equity</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">17 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      UpGuard helps the world's most important organisations manage cyber risk across their vendor ecosystems. We're hiring a BA embedded in our AI/Automation team to shape how we deploy LLMs internally and in customer-facing features.
+    </div>
+
+    <h2>The role</h2>
+    <p>Hybrid BA / AI Product Analyst role. You'll work with engineering and product to identify automation opportunities, design workflow prototypes, evaluate LLM outputs, and translate fuzzy AI possibilities into shippable requirements.</p>
+
+    <h2>Core responsibilities</h2>
+    <ul>
+      <li>Identify, frame, and prioritise AI/automation opportunities across the UpGuard platform</li>
+      <li>Design LLM-powered workflows — including evals, prompt architecture, and HITL gates</li>
+      <li>Rapidly prototype using tools like n8n, LangChain, and internal scaffolding</li>
+      <li>Author detailed functional requirements for engineering pickup</li>
+      <li>Run the eval rhythm — measure output quality, track regressions, feed back to prompt/model choices</li>
+    </ul>
+
+    <h2>You'll bring</h2>
+    <ul>
+      <li>5+ years as a BA, Product Analyst, or PM with BA-heavy scope</li>
+      <li>Hands-on experience building with LLM APIs (OpenAI, Anthropic, or similar)</li>
+      <li>Comfortable writing Python or similar for prototype work</li>
+      <li>Strong grasp of eval methodology and HITL design patterns</li>
+      <li>Prior experience in security, risk, or compliance tooling is a plus</li>
+    </ul>
+
+    <h2>What we offer</h2>
+    <ul>
+      <li>Fully remote within Australia</li>
+      <li>Meaningful equity, profit-sharing, and a clear path to senior AI roles</li>
+      <li>Annual off-site (last year: Fiji)</li>
+    </ul>
+  `,
+  8: `
+    <div class="jd-title">Product Manager — Shopify</div>
+    <div class="jd-company-line"><span class="co">Okendo</span> · Reviews SaaS · Remote (global)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$150k–$170k USD + equity</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">18 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      Okendo is the leading reviews and UGC platform for Shopify merchants. We're hiring a PM who lives and breathes the Shopify ecosystem to own our core reviews product and drive deeper platform integration.
+    </div>
+
+    <h2>Responsibilities</h2>
+    <ul>
+      <li>Own the reviews product roadmap across collection, display, and moderation</li>
+      <li>Drive deeper Shopify integration — Theme App Blocks, Shopify Flow, Shopify Plus features</li>
+      <li>Partner with Growth on merchant activation and expansion motions</li>
+      <li>Run customer research sprints with Shopify merchants of all sizes</li>
+    </ul>
+
+    <h2>Requirements</h2>
+    <ul>
+      <li>4+ years PM experience, ideally with Shopify app work</li>
+      <li>Deep knowledge of the Shopify ecosystem — Theme App Extensions, Flow, Shopify Plus</li>
+      <li>Strong ecommerce instincts, ideally from merchant or agency backgrounds</li>
+      <li>Remote-first, comfortable with async, timezone-friendly for EU/US overlap</li>
+    </ul>
+  `,
+  10: `
+    <div class="jd-title">Senior Product Manager — Platform</div>
+    <div class="jd-company-line"><span class="co">TradeWindow</span> · Trade-tech SaaS · Remote / Auckland</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">NZ$180k–$210k</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">18 February 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      TradeWindow is the digital backbone for international trade in Australasia. We connect exporters, freight forwarders, customs, and ports through a regulated data platform. We're hiring a Senior PM to own the core trade platform.
+    </div>
+
+    <h2>The role</h2>
+    <ul>
+      <li>Own the trade documentation platform roadmap (export docs, certificates, customs integrations)</li>
+      <li>Partner with regulators and industry bodies on compliance and data standards</li>
+      <li>Define the API / EDI integration strategy for enterprise customers</li>
+      <li>Work cross-functionally across Sydney, Auckland, and Bangalore</li>
+    </ul>
+
+    <h2>Requirements</h2>
+    <ul>
+      <li>6+ years PM in B2B SaaS, ideally with regulated industry exposure</li>
+      <li>Experience with API-led products, EDI, or data-heavy platforms</li>
+      <li>Comfortable with a distributed team across NZ, AU, and India</li>
+    </ul>
+  `,
+  11: `
+    <div class="jd-title">Digital Experience & Lifecycle Lead — APAC</div>
+    <div class="jd-company-line"><span class="co">Foot Locker APAC</span> · Retail / Apparel · Sydney (in-office)</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent, full-time</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$140k–$160k + super</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">10 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      Foot Locker is building a world-class digital and CRM capability for APAC. We're hiring a hands-on Digital Experience & Lifecycle Lead to own our customer lifecycle, triggered campaigns, and loyalty activation.
+    </div>
+
+    <h2>What you'll do</h2>
+    <ul>
+      <li>Own the end-to-end customer lifecycle journey across email, SMS, push, and in-app</li>
+      <li>Design and execute 50+ triggered campaign flows in Braze</li>
+      <li>Run cohort analysis, A/B tests, and attribution modelling for lifecycle campaigns</li>
+      <li>Partner with Loyalty, Retail, and Ecommerce on integrated activation</li>
+      <li>Report lifecycle contribution to revenue and retention weekly</li>
+    </ul>
+
+    <h2>Required experience</h2>
+    <ul>
+      <li>5+ years hands-on in CRM lifecycle, ideally retail or apparel</li>
+      <li>Expert-level Braze (or Klaviyo / Iterable) — campaign build, Canvas flows, Connected Content</li>
+      <li>Strong SQL and segmentation capability</li>
+      <li>Track record of shipping triggered campaign programs that moved retention metrics</li>
+    </ul>
+  `,
+  12: `
+    <div class="jd-title">Senior Product Manager — iGaming</div>
+    <div class="jd-company-line"><span class="co">Dabble</span> · Social Wagering · Brisbane</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$180k–$210k + super</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">8 March 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      Dabble is Australia's fastest-growing social wagering platform. We're looking for a Senior PM who has shipped Tier 1 pay-to-play game features at scale — live ops, gamification, and retention mechanics.
+    </div>
+
+    <h2>Required</h2>
+    <ul>
+      <li>5+ years PM in iGaming / pay-to-play / F2P mobile games</li>
+      <li>Track record shipping live ops, gamification, and seasonal events</li>
+      <li>Deep understanding of retention mechanics, reward loops, and LTV optimisation</li>
+      <li>Strong data orientation — SQL fluency and experiment design</li>
+    </ul>
+  `,
+  13: `
+    <div class="jd-title">Technical Business Analyst — Conversational Search</div>
+    <div class="jd-company-line"><span class="co">Queensland University of Technology (QUT)</span> · Higher Education · Brisbane</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">12-month fixed-term contract</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$125k–$145k + super</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">14 April 2026</span></div>
+    </div>
+
+    <div class="jd-lead">
+      QUT is building conversational AI capabilities into our student and staff-facing digital services. We're hiring a Technical BA on a 12-month contract to lead requirements, evals, and delivery oversight for a conversational search pilot.
+    </div>
+
+    <h2>Responsibilities</h2>
+    <ul>
+      <li>Lead requirements gathering and functional design for conversational search MVP</li>
+      <li>Define eval methodology — both automated and human-in-the-loop</li>
+      <li>Work closely with our research partners and internal ML team</li>
+      <li>Document system architecture, data flows, and integration points</li>
+    </ul>
+
+    <h2>What we're looking for</h2>
+    <ul>
+      <li>Senior BA with 7+ years in tech delivery, preferably with AI/ML projects</li>
+      <li>Comfortable authoring eval frameworks and requirements in parallel</li>
+      <li>Public sector or higher ed experience helpful but not required</li>
+    </ul>
+  `,
+  14: `
+    <div class="jd-title">Head of Product</div>
+    <div class="jd-company-line"><span class="co">H&L POS</span> · Hospitality tech · Brisbane</div>
+    <div class="jd-meta-strip">
+      <div class="item"><span class="label">Employment</span><span class="value">Permanent</span></div>
+      <div class="item"><span class="label">Team</span><span class="value">~40 engineers</span></div>
+      <div class="item"><span class="label">Salary</span><span class="value"><span class="jd-salary">$220k–$250k + super</span></span></div>
+      <div class="item"><span class="label">Posted</span><span class="value">28 February 2026 (via Haydn Furness)</span></div>
+    </div>
+
+    <div class="jd-lead">
+      H&L is the leading POS platform for Australian hospitality venues. We're hiring our first Head of Product to build and lead the product function, own the platform roadmap, and partner with our CEO on strategic direction.
+    </div>
+
+    <h2>Role scope</h2>
+    <ul>
+      <li>Build and lead the product function from scratch (currently PM-less)</li>
+      <li>Own the platform roadmap across POS, kitchen display, online ordering, and loyalty</li>
+      <li>Partner with engineering leadership on delivery and technical direction</li>
+      <li>Report to the CEO; work directly with the exec team and Board on strategic initiatives</li>
+    </ul>
+
+    <h2>Candidate profile</h2>
+    <ul>
+      <li>Senior product leader with 10+ years, at least 3 years as Head of Product or equivalent</li>
+      <li>Built and led product functions from early stages</li>
+      <li>Platform or horizontal product experience strongly preferred</li>
+      <li>Hospitality experience a plus but not required</li>
+    </ul>
+  `
+};
+
+function getJdContent(id) {
+  return jd_content_map[id] || `
+    <div class="jd-empty">
+      <span class="jd-empty-icon">📄</span>
+      JD file queued for extraction.<br>
+      <span style="color: var(--text-dim); font-size: 11px;">Once the watcher processes the source file, the full job ad will appear here.</span>
+    </div>
+  `;
+}
+
+// ---------- CLAUDE API INTEGRATION ----------
+function buildSystemPrompt(job) {
+  let prompt = `You are Claude, embedded in dav's JD Inbox — a tool he uses to triage job opportunities.
+
+CANDIDATE CONTEXT
+Davydd (Dav) Kelly, Brisbane-based Senior PM / BA with 22+ years across B2B SaaS, govtech, fintech, healthtech, and AI-enabled platforms. MBA Distinction (AGSM UNSW), B.IT/B.Business (QUT), PSPO I. Actively job-searching — open to Senior PM, Principal Consultant, Product Strategist, AI Transformation Lead, embedded consulting roles. Running Candeo (production AI career intelligence pipeline) on the side, intends to productise it.
+
+Working style: direct, low-formality, corrects inaccuracies immediately, prefers honest framing over optimistic spin, fast-scan output with bullets and exhaustive detail simultaneously. No preamble, no sign-offs, no "great question".
+
+CURRENT JOB UNDER DISCUSSION
+Role: ${job.role}
+Company: ${job.company}
+Sector: ${job.sector}
+Work mode: ${job.mode}
+Posted: ${job.posted}
+Source: ${job.source}
+Status: ${job.status}`;
+
+  if (job.score != null) {
+    prompt += `
+
+RAPID CHECK VERDICT (already completed)
+Fit score: ${job.score}/10
+Tier: ${job.tier}
+Archetype: ${job.archetype}
+Recommendation: ${job.recommend}
+
+Why: ${job.why}
+
+Green flags:
+${job.green.map(g => '- ' + g).join('\n')}
+
+Red flags:
+${job.red.map(r => '- ' + r).join('\n')}
+
+Unstated selection filter: ${job.filter}`;
+  } else {
+    prompt += `\n\nNo Rapid Check has been run yet for this JD.`;
+  }
+
+  const jdText = jd_content_map[job.id];
+  if (jdText) {
+    // strip HTML for the prompt
+    const cleanJd = jdText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    prompt += `\n\nFULL JOB DESCRIPTION\n${cleanJd}`;
+  }
+
+  prompt += `
+
+INSTRUCTIONS
+Respond to dav's messages about this specific role. Be direct and useful. When he asks about fit, gaps, framing, or strategy — give him the thinking, not just conclusions. When he asks you to draft something (cover letter intro, recruiter reply, interview answer), draft it. When something's off, push back. Use his evidence base when relevant (Westpac, NHVR, LGIAsuper, WMQ, Terem engagements, Candeo, Rimon, etc). Keep it conversational but dense. Don't moralise. Don't suggest he "consult a professional" for career decisions — that's your role here.`;
+
+  return prompt;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  let html = escapeHtml(text);
+  // Code
+  html = html.replace(/`([^`]+)`/g, '<code style="background: var(--bg); padding: 1px 5px; border-radius: 3px; font-family: \'JetBrains Mono\', monospace; font-size: 11.5px;">$1</code>');
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+  // Bullet lists (lines starting with - or *)
+  const lines = html.split('\n');
+  let out = '';
+  let inList = false;
+  for (const line of lines) {
+    const bulletMatch = line.match(/^[-*]\s+(.+)/);
+    if (bulletMatch) {
+      if (!inList) { out += '<ul style="margin: 6px 0 8px 18px;">'; inList = true; }
+      out += '<li style="margin: 3px 0;">' + bulletMatch[1] + '</li>';
+    } else {
+      if (inList) { out += '</ul>'; inList = false; }
+      if (line.trim()) out += '<p style="margin: 6px 0;">' + line + '</p>';
+    }
+  }
+  if (inList) out += '</ul>';
+  return out;
+}
+
+async function callClaude(job) {
+  const history = job.chat_history || [];
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: buildSystemPrompt(job),
+      messages: history
+    })
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`API ${response.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return data.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+}
+
+// ---------- STATE ----------
+let state = {
+  selectedIdx: 0,
+  sidebarOpen: false,
+  modalOpen: null,
+  activeTab: 'fit',
+  searchTerm: '',
+  statusFilter: '',
+  tierFilter: '',
+  scoreFilter: ''
+};
+
+// ---------- RENDER ----------
+function getFilteredJobs() {
+  return jobs.filter(j => {
+    if (state.searchTerm) {
+      const q = state.searchTerm.toLowerCase();
+      if (!(j.role + j.company + j.sector + (j.brief||'')).toLowerCase().includes(q)) return false;
+    }
+    if (state.statusFilter && j.status !== state.statusFilter) return false;
+    if (state.tierFilter && j.tier !== state.tierFilter) return false;
+    if (state.scoreFilter) {
+      if (state.scoreFilter === 'high' && (j.score||0) < 7) return false;
+      if (state.scoreFilter === 'mid' && ((j.score||0) < 5 || (j.score||0) >= 7)) return false;
+      if (state.scoreFilter === 'low' && (j.score||0) >= 5) return false;
+    }
+    return true;
+  });
+}
+
+function scoreClass(s) {
+  if (s == null) return 'score-none';
+  if (s >= 7) return 'score-high';
+  if (s >= 5) return 'score-mid';
+  return 'score-low';
+}
+
+const TIER_INFO = {
+  A: { label: 'Upload as-is',  full: 'Upload generic PM CV — no changes' },
+  B: { label: 'Fast CV',       full: '5 min: relabel tagline, rewrite summary, fresh Career Highlights' },
+  C: { label: 'Targeted tweak', full: '15–20 min: Fast CV + rewrite 1–2 roles' },
+  D: { label: 'Full engine',   full: 'Full engine run — Steps 0–8, full corpus search' },
+  SKIP: { label: 'Skip',       full: 'Pass — fit too low or wrong archetype' }
+};
+
+function renderTierBadge(tier) {
+  if (!tier) return '<span class="tier-none">—</span>';
+  const info = TIER_INFO[tier] || { label: '', full: '' };
+  return `<span class="tier-badge tier-${tier}" title="${info.full}">
+    <span class="tier-letter">${tier === 'SKIP' ? '×' : tier}</span>
+    <span class="tier-desc">${info.label}</span>
+  </span>`;
+}
+
+function statusIcon(status) {
+  const classMap = {
+    pending: 'status-pending',
+    rapid: 'status-rapid',
+    tier: 'status-tier',
+    cv: 'status-cv',
+    applied: 'status-applied',
+    skipped: 'status-skipped'
+  };
+  const titleMap = {
+    pending: 'Pending — waiting for JD Rapid',
+    rapid: 'Rapid complete — tier not set',
+    tier: 'Tier set — CV not generated',
+    cv: 'CV generated — not yet applied',
+    applied: 'Applied',
+    skipped: 'Skipped'
+  };
+  return `<span class="status-icon ${classMap[status]}" title="${titleMap[status]}"></span>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  const filtered = getFilteredJobs();
+  document.getElementById('count-badge').textContent = `${filtered.length} / ${jobs.length}`;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">No JDs match your filter.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((j, idx) => {
+    const isPending = j.status === 'pending';
+    const rowClass = [
+      idx === state.selectedIdx ? 'selected' : '',
+      isPending ? 'pending-rapid' : ''
+    ].filter(Boolean).join(' ');
+    
+    const scoreBadge = j.score != null 
+      ? `<span class="score-badge ${scoreClass(j.score)}">${j.score}/10</span>`
+      : isPending
+        ? `<span class="score-badge score-pending" title="Press R to run Rapid">⚡ Press R</span>`
+        : `<span class="score-badge score-none">—</span>`;
+    
+    const briefText = j.brief 
+      || (isPending ? '<span style="color: var(--amber); font-weight: 500;">Awaiting Rapid — press R</span>' : '<span style="color: var(--text-faint);">—</span>');
+    
+    return `
+    <tr data-id="${j.id}" data-idx="${idx}" class="${rowClass}">
+      <td>${statusIcon(j.status)}</td>
+      <td class="role-cell"><div class="role-title">${j.role}</div></td>
+      <td class="company-cell" title="${j.company}">${j.company}</td>
+      <td>${scoreBadge}</td>
+      <td>${renderTierBadge(j.tier)}</td>
+      <td><span class="sector-pill">${j.sector}</span></td>
+      <td><span class="work-mode">${j.mode}</span></td>
+      <td class="brief-cell" title="${j.brief||''}">${briefText}</td>
+      <td class="meta-cell">${j.posted}</td>
+      <td class="meta-cell">${j.source}</td>
+    </tr>
+  `;
+  }).join('');
+
+  // Attach row handlers
+  tbody.querySelectorAll('tr').forEach(row => {
+    row.addEventListener('click', () => {
+      state.selectedIdx = parseInt(row.dataset.idx);
+      renderTable();
+    });
+    row.addEventListener('dblclick', () => {
+      state.selectedIdx = parseInt(row.dataset.idx);
+      openFitModal();
+    });
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      state.selectedIdx = parseInt(row.dataset.idx);
+      openSidebar();
+    });
+  });
+}
+
+function getSelected() {
+  const filtered = getFilteredJobs();
+  return filtered[state.selectedIdx] || null;
+}
+
+// ---------- SIDEBAR ----------
+function openSidebar() {
+  const j = getSelected();
+  if (!j) return;
+  document.getElementById('sb-role').textContent = j.role;
+  document.getElementById('sb-company').textContent = j.company;
+  document.getElementById('sb-sector').textContent = j.sector;
+  document.getElementById('sb-score').textContent = j.score != null ? j.score + '/10' : '—';
+  document.getElementById('sb-tier').innerHTML = j.tier ? renderTierBadge(j.tier) : '—';
+
+  const hasTier = j.tier && j.tier !== 'SKIP';
+  document.getElementById('btn-cv').disabled = !hasTier;
+  document.getElementById('btn-letter').disabled = !hasTier;
+  document.getElementById('btn-cv').title = hasTier ? 'Generate CV using Tier ' + j.tier : 'Set tier first';
+  document.getElementById('btn-letter').title = hasTier ? 'Generate cover letter (voice spec loaded)' : 'Set tier first';
+
+  renderMessages(j);
+  document.getElementById('sidebar').classList.add('open');
+  state.sidebarOpen = true;
+  updateFooter('chat');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  state.sidebarOpen = false;
+  updateFooter('inbox');
+}
+
+function renderMessages(j) {
+  const container = document.getElementById('messages');
+  if (!j.chat_history) j.chat_history = [];
+
+  let html = '';
+
+  // Intro: Rapid verdict or pending state
+  if (j.status === 'pending' || !j.why) {
+    html += `
+      <div class="msg claude">
+        <div class="role-tag">Claude</div>
+        Ready when you are. Press <strong>R</strong> to run Rapid on this JD, or just ask me anything about the role first — I've got the JD and your evidence base loaded.
+      </div>`;
+  } else {
+    const greenHTML = j.green.map(g => `<li>${g}</li>`).join('');
+    const redHTML = j.red.map(r => `<li>${r}</li>`).join('');
+    const verdictColor = j.recommend === 'Apply' ? 'var(--green)' : j.recommend === 'Apply with caveats' ? 'var(--amber)' : 'var(--red)';
+
+    html += `
+      <div class="msg claude">
+        <div class="role-tag">Claude — JD Rapid</div>
+        <strong style="color: ${verdictColor};">${j.recommend}</strong> · Fit ${j.score}/10 · Tier ${j.tier}<br><br>
+        ${j.why}
+        <br><br>
+        <strong>Green:</strong>
+        <ul>${greenHTML}</ul>
+        <strong>Red:</strong>
+        <ul>${redHTML}</ul>
+        <br>
+        <strong>Unstated filter:</strong> ${j.filter}
+      </div>`;
+  }
+
+  // Render actual chat history
+  for (const msg of j.chat_history) {
+    if (msg.role === 'user') {
+      html += `<div class="msg user"><div class="role-tag">dav</div>${renderMarkdown(msg.content)}</div>`;
+    } else {
+      html += `<div class="msg claude"><div class="role-tag">Claude</div>${renderMarkdown(msg.content)}</div>`;
+    }
+  }
+
+  container.innerHTML = html;
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const j = getSelected();
+  if (!j) return;
+
+  if (!j.chat_history) j.chat_history = [];
+
+  // Append user turn
+  j.chat_history.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Re-render to show user message
+  renderMessages(j);
+
+  // Add thinking indicator
+  const container = document.getElementById('messages');
+  const thinking = document.createElement('div');
+  thinking.className = 'msg claude';
+  thinking.id = 'thinking-msg';
+  thinking.innerHTML = `<div class="role-tag">Claude</div><div class="thinking-dots"><span></span><span></span><span></span></div>`;
+  container.appendChild(thinking);
+  container.scrollTop = container.scrollHeight;
+
+  // Disable input while waiting
+  input.disabled = true;
+
+  try {
+    const reply = await callClaude(j);
+    j.chat_history.push({ role: 'assistant', content: reply });
+    document.getElementById('thinking-msg')?.remove();
+    renderMessages(j);
+  } catch (err) {
+    document.getElementById('thinking-msg')?.remove();
+    const errMsg = document.createElement('div');
+    errMsg.className = 'msg claude';
+    errMsg.innerHTML = `<div class="role-tag">Claude</div><em style="color: var(--red);">${err.message}</em><br><br><span style="color: var(--text-dim); font-size: 11px;">Chat needs a live API environment. If you're viewing this as a downloaded file, real chat will activate once the Python backend is wired.</span>`;
+    container.appendChild(errMsg);
+    // Roll back the user turn since we failed
+    j.chat_history.pop();
+  } finally {
+    input.disabled = false;
+    input.focus();
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+// ---------- MODAL ----------
+function openFitModal() {
+  const j = getSelected();
+  if (!j) return;
+  if (j.status === 'pending') {
+    toast('Run Rapid first (R) to see fit details', 'info');
+    return;
+  }
+  document.getElementById('mod-role').textContent = j.role;
+  document.getElementById('mod-company').textContent = j.company;
+  document.getElementById('mod-sector').textContent = j.sector;
+  document.getElementById('mod-posted').textContent = j.posted;
+  const urlEl = document.getElementById('mod-url');
+  if (j.url) { urlEl.href = j.url; urlEl.style.display = 'inline'; }
+  else { urlEl.style.display = 'none'; }
+  document.getElementById('mod-score').innerHTML = `<span class="score-badge ${scoreClass(j.score)}">${j.score}/10</span>`;
+  document.getElementById('mod-tier').innerHTML = j.tier ? renderTierBadge(j.tier) : '—';
+  document.getElementById('mod-archetype').textContent = j.archetype || '—';
+  document.getElementById('mod-rec').textContent = j.recommend || '—';
+  document.getElementById('mod-why').textContent = j.why || '—';
+  document.getElementById('mod-green').innerHTML = j.green.map(g => `<li>${g}</li>`).join('');
+  document.getElementById('mod-red').innerHTML = j.red.map(r => `<li>${r}</li>`).join('');
+  document.getElementById('mod-filter').textContent = j.filter || '—';
+  document.getElementById('mod-jd').innerHTML = getJdContent(j.id);
+
+  // Reset to Fit tab each time
+  switchTab('fit');
+
+  document.getElementById('fit-modal').classList.add('open');
+  state.modalOpen = 'fit';
+  updateFooter('modal');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('#fit-modal .modal-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === name);
+  });
+  document.querySelectorAll('#fit-modal .tab-panel').forEach(p => {
+    p.classList.toggle('active', p.dataset.tab === name);
+  });
+  state.activeTab = name;
+  // Scroll body back to top
+  const body = document.querySelector('#fit-modal .modal-body');
+  if (body) body.scrollTop = 0;
+}
+
+function cycleTab(direction) {
+  if (state.modalOpen !== 'fit') return;
+  const tabs = ['fit', 'jd'];
+  const current = tabs.indexOf(state.activeTab);
+  const next = (current + direction + tabs.length) % tabs.length;
+  switchTab(tabs[next]);
+}
+
+function openHelpModal() {
+  document.getElementById('help-modal').classList.add('open');
+  state.modalOpen = 'help';
+  updateFooter('modal');
+}
+
+function closeModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  state.modalOpen = null;
+  updateFooter(state.sidebarOpen ? 'chat' : 'inbox');
+}
+
+function openSidebarFromModal() {
+  closeModal();
+  openSidebar();
+}
+
+// ---------- ACTIONS (mock) ----------
+function runRapid() {
+  const j = getSelected();
+  if (!j) return;
+  toast(`Running Rapid on ${j.company} — ${j.role}…`, 'info');
+  setTimeout(() => toast(`Rapid done — ${j.company}: ${Math.floor(Math.random()*4)+5}/10`, 'success'), 1200);
+}
+function setTier(t) {
+  const j = getSelected();
+  if (!j) return;
+  j.tier = t;
+  j.status = 'tier';
+  toast(`Tier ${t} set for ${j.company}`, 'success');
+  renderTable();
+  if (state.sidebarOpen) openSidebar();
+}
+function generateCV() {
+  const j = getSelected();
+  if (!j || !j.tier || j.tier === 'SKIP') { toast('Set a tier first (A/B/C/D)', 'info'); return; }
+  toast(`Generating Tier ${j.tier} CV for ${j.company}…`, 'info');
+  setTimeout(() => { j.status = 'cv'; renderTable(); toast(`CV ready: ${j.company} - Davydd Kelly CV - ${j.role}.docx`, 'success'); }, 1500);
+}
+function generateLetter() {
+  const j = getSelected();
+  if (!j || !j.tier || j.tier === 'SKIP') { toast('Set a tier first (A/B/C/D)', 'info'); return; }
+  toast(`Drafting cover letter (voice spec loaded)…`, 'info');
+  setTimeout(() => toast(`Cover letter ready — 1 page, voice pattern applied`, 'success'), 1500);
+}
+function skipJD() {
+  const j = getSelected();
+  if (!j) return;
+  j.status = 'skipped';
+  j.tier = 'SKIP';
+  toast(`Skipped ${j.company}`, 'info');
+  renderTable();
+  if (state.modalOpen === 'fit') closeModal();
+}
+function markApplied() {
+  const j = getSelected();
+  if (!j) return;
+  j.status = 'applied';
+  toast(`Marked applied: ${j.company}`, 'success');
+  renderTable();
+}
+
+// ---------- CONTEXT MENU ----------
+function showCtxMenu(x, y) {
+  const menu = document.getElementById('ctx-menu');
+  menu.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - 400) + 'px';
+  menu.classList.add('open');
+}
+function hideCtxMenu() {
+  document.getElementById('ctx-menu').classList.remove('open');
+}
+
+// ---------- TOAST ----------
+let toastTimer;
+function toast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  setTimeout(() => t.classList.add('show'), 10);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---------- FOOTER CONTEXT ----------
+function updateFooter(ctx) {
+  const footer = document.getElementById('footer');
+  const label = document.getElementById('ctx-label');
+  if (ctx === 'chat') {
+    label.textContent = 'Chat';
+    footer.innerHTML = `
+      <span class="ctx-label">Chat</span>
+      <span class="shortcut-item"><span class="key">Esc</span><span class="desc">Close</span></span>
+      <span class="shortcut-item"><span class="key">⌘↵</span><span class="desc">Send</span></span>
+      <span class="shortcut-item"><span class="key">⇧↵</span><span class="desc">New line</span></span>
+      <span class="shortcut-item"><span class="key">⌃R</span><span class="desc">Re-run Rapid</span></span>
+      <span class="shortcut-item"><span class="key">⌃V</span><span class="desc">Generate CV</span></span>
+      <span class="shortcut-item"><span class="key">⌃L</span><span class="desc">Cover letter</span></span>
+      <span class="help-hint"><span class="key">?</span><span class="desc">All shortcuts</span></span>`;
+  } else if (ctx === 'modal') {
+    footer.innerHTML = `
+      <span class="ctx-label">Modal</span>
+      <span class="shortcut-item"><span class="key">Tab</span><span class="desc">Next tab</span></span>
+      <span class="shortcut-item"><span class="key">⇧Tab</span><span class="desc">Prev tab</span></span>
+      <span class="shortcut-item"><span class="key">1</span>/<span class="key">2</span><span class="desc">Fit / JD</span></span>
+      <span class="shortcut-item"><span class="key">→</span><span class="desc">Open Chat</span></span>
+      <span class="shortcut-item"><span class="key">R</span><span class="desc">Re-run Rapid</span></span>
+      <span class="shortcut-item"><span class="key">X</span><span class="desc">Skip</span></span>
+      <span class="shortcut-item"><span class="key">Esc</span><span class="desc">Close</span></span>
+      <span class="help-hint"><span class="key">?</span><span class="desc">All shortcuts</span></span>`;
+  } else {
+    footer.innerHTML = `
+      <span class="ctx-label">Inbox</span>
+      <span class="shortcut-item"><span class="key">↑↓</span><span class="desc">Nav</span></span>
+      <span class="shortcut-item"><span class="key">↵</span><span class="desc">Details</span></span>
+      <span class="shortcut-item"><span class="key">→</span><span class="desc">Chat</span></span>
+      <span class="shortcut-item"><span class="key">R</span><span class="desc">Rapid</span></span>
+      <span class="shortcut-item"><span class="key">A</span>/<span class="key">B</span>/<span class="key">C</span>/<span class="key">D</span><span class="desc">Tier</span></span>
+      <span class="shortcut-item"><span class="key">X</span><span class="desc">Skip</span></span>
+      <span class="shortcut-item"><span class="key">⌃L</span><span class="desc">Letter</span></span>
+      <span class="help-hint"><span class="key">?</span><span class="desc">All shortcuts</span></span>`;
+  }
+}
+
+// ---------- KEYBOARD ----------
+let gPressed = false;
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement.tagName.toLowerCase();
+  const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+  // Escape always works
+  if (e.key === 'Escape') {
+    if (state.modalOpen) { closeModal(); return; }
+    if (state.sidebarOpen) { closeSidebar(); return; }
+    if (isTyping && tag === 'input') { document.activeElement.blur(); return; }
+    hideCtxMenu();
+    return;
+  }
+
+  // In input: only some shortcuts work
+  if (isTyping) {
+    if (tag === 'textarea' && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
+    return;
+  }
+
+  // Global shortcuts
+  if (e.key === '?') { openHelpModal(); return; }
+  if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
+
+  // Modal-only context (don't fall through to row shortcuts)
+  if (state.modalOpen === 'help') return;
+
+  // Sidebar actions
+  if (state.sidebarOpen) {
+    if (e.key === 'ArrowLeft') { closeSidebar(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') { e.preventDefault(); generateLetter(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { e.preventDefault(); generateCV(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') { e.preventDefault(); runRapid(); return; }
+    // don't let row nav keys through
+    if (['ArrowUp','ArrowDown','j','k','a','b','c','d','r','x'].includes(e.key.toLowerCase())) return;
+  }
+
+  const filtered = getFilteredJobs();
+
+  // Row navigation
+  if (e.key === 'ArrowDown' || e.key === 'j') {
+    e.preventDefault();
+    state.selectedIdx = Math.min(state.selectedIdx + 1, filtered.length - 1);
+    renderTable();
+    scrollSelectedIntoView();
+    return;
+  }
+  if (e.key === 'ArrowUp' || e.key === 'k') {
+    e.preventDefault();
+    state.selectedIdx = Math.max(state.selectedIdx - 1, 0);
+    renderTable();
+    scrollSelectedIntoView();
+    return;
+  }
+  if (e.key === 'g') {
+    if (gPressed) { state.selectedIdx = 0; renderTable(); scrollSelectedIntoView(); gPressed = false; }
+    else { gPressed = true; setTimeout(() => gPressed = false, 600); }
+    return;
+  }
+  if (e.key === 'G') {
+    state.selectedIdx = filtered.length - 1; renderTable(); scrollSelectedIntoView(); return;
+  }
+
+  // Row actions (only when not in modal/sidebar)
+  if (state.modalOpen === 'fit') {
+    // Tab navigation between panels
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      cycleTab(e.shiftKey ? -1 : 1);
+      return;
+    }
+    if (e.key === '1') { switchTab('fit'); return; }
+    if (e.key === '2') { switchTab('jd'); return; }
+    if (e.key === 'r' || e.key === 'R') { runRapid(); return; }
+    if (e.key === 'x' || e.key === 'X') { skipJD(); return; }
+    if (e.key === ' ') { e.preventDefault(); markApplied(); return; }
+    if (e.key === 'ArrowRight') { openSidebarFromModal(); return; }
+    return;
+  }
+
+  if (e.key === 'Enter') { openFitModal(); return; }
+  if (e.key === 'ArrowRight') { openSidebar(); return; }
+  if (e.key === 'r' || e.key === 'R') { runRapid(); return; }
+  if (['a','b','c','d','A','B','C','D'].includes(e.key)) { setTier(e.key.toUpperCase()); return; }
+  if (e.key === 'x' || e.key === 'X') { skipJD(); return; }
+  if (e.key === ' ') { e.preventDefault(); markApplied(); return; }
+});
+
+function scrollSelectedIntoView() {
+  setTimeout(() => {
+    const row = document.querySelector('tr.selected');
+    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, 10);
+}
+
+// ---------- FILTERS / SEARCH ----------
+document.getElementById('search').addEventListener('input', (e) => {
+  state.searchTerm = e.target.value;
+  state.selectedIdx = 0;
+  renderTable();
+});
+['filter-status','filter-tier','filter-score'].forEach(id => {
+  document.getElementById(id).addEventListener('change', (e) => {
+    const key = id.replace('filter-','') + 'Filter';
+    state[key] = e.target.value;
+    state.selectedIdx = 0;
+    renderTable();
+  });
+});
+
+// ---------- DROP ZONE (visual only) ----------
+const dz = document.getElementById('drop-zone');
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));
+dz.addEventListener('drop', e => {
+  const files = Array.from(e.dataTransfer.files || []);
+  if (files.length) toast(`${files.length} file(s) queued — [prototype: would parse and extract metadata]`, 'info');
+});
+
+// ---------- QUEUE ANIMATION ----------
+let queueProgress = 15;
+setInterval(() => {
+  queueProgress += 2;
+  if (queueProgress > 100) queueProgress = 15;
+  document.getElementById('queue-bar').style.width = queueProgress + '%';
+}, 300);
+
+// ---------- CTX MENU ----------
+document.addEventListener('click', hideCtxMenu);
+document.getElementById('ctx-menu').addEventListener('click', (e) => e.stopPropagation());
+
+// ---------- INITIAL RENDER ----------
+renderTable();
+updateFooter('inbox');
+
+// Textarea auto-grow
+const ta = document.getElementById('msg-input');
+ta.addEventListener('input', () => {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+});
+
+// Welcome toast
+setTimeout(() => toast('Press ? for all shortcuts', 'info'), 600);
+</script>
+
+</body>
+</html>

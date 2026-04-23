@@ -2752,7 +2752,34 @@ document.getElementById('search').addEventListener('input', (e) => {
 // ---------- DROP ZONE (visual only) ----------
 const dz = document.getElementById('drop-zone');
 ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
-['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));dz.addEventListener('drop', async e => {
+  const files = Array.from(e.dataTransfer.files || []);
+  if (!files.length) return;
+  
+  toast(`Uploading ${files.length} file(s)...`, 'info');
+  
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      
+      const job = await res.json();
+      state.jobs.unshift(job);
+      toast(`✓ ${file.name} uploaded`, 'success');
+    } catch (err) {
+      toast(`✗ ${file.name} failed: ${err.message}`, 'error');
+    }
+  }
+  
+  renderTable();
+});
 dz.addEventListener('drop', e => {
   const files = Array.from(e.dataTransfer.files || []);
   if (files.length) toast(`${files.length} file(s) queued — [prototype: would parse and extract metadata]`, 'info');

@@ -41,10 +41,22 @@ def load_career_profile() -> str:
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
 RAPID_PROMPT = """\
-You are a career coach doing a rapid triage of a job description.
+You are a career coach doing a rapid triage of a job description for a specific candidate.
 
 CANDIDATE PROFILE:
 {career_profile}
+
+CANDIDATE CONTEXT:
+- Target roles: Senior PM, Head of Product, AI Product Manager, Digital Transformation Lead,
+  Innovation Lead, Product Strategist, Chief of Staff (product/tech), Senior/Principal BA,
+  Service Designer, Delivery Lead
+- Sweet spot: first PM or Head of Product at an AI-adjacent scale-up; principal/staff IC product
+  role at a regulated tech company; retained fractional with anchor client
+- Drains: executing pre-digested plans, optimisation loops on settled products, large team
+  management as primary responsibility, pure project coordination
+- Location: Brisbane-based, open to remote or hybrid AU/NZ only
+- Not worth applying: score below 5, requires security clearance, US/UK/Canada work auth required,
+  pure sales/BD/marketing/engineering roles
 
 JOB DESCRIPTION:
 {jd_text}
@@ -56,16 +68,24 @@ Analyse this role for fit and return ONLY valid JSON — no markdown, no explana
   "tier": <"A" | "B" | "C" | "D" | "SKIP">,
   "archetype": <short role type, e.g. "AI Transformation Lead" or "Senior PM – FinTech">,
   "brief": <one sentence: role + company type + location + salary hint if visible>,
-  "why": <2-3 sentences explaining the score, referencing specific candidate background>,
-  "green_flags": [<2-4 specific positives>],
-  "red_flags": [<0-3 specific concerns or gaps, empty array if none>]
+  "why": <2-3 sentences. Be specific — reference actual experiences from the candidate profile that match or don't match. Name the company type, the specific need, the specific gap if any.>,
+  "green_flags": [<2-4 specific positives — name actual matching experiences>],
+  "red_flags": [<0-3 specific concerns a recruiter will notice, empty array if none>]
 }}
 
-Tier guide:
-A = Upload generic CV as-is (low fit or low priority role)
-B = Fast CV tweak — tagline + summary only, ~5 min
-C = Targeted tweak — Fast CV + rewrite 1-2 role bullet sets, ~20 min
-D = Full engine run — high fit, worth doing properly
+Tier recommendation rules (follow these exactly):
+- Score 8-10, generic CV covers it well: A
+- Score 7-9, strong match but tagline/summary/highlights need role-specific framing: B
+- Score 6-8, specific gap fixable by rewriting 1-2 role bullet sets: C
+- Score 7-9, strong match with a genuine evidence gap only full story search can close: D
+- Score below 5: SKIP
+- When in doubt between B and C: recommend B
+
+Tier meanings (for context, do not include in output):
+A = Upload generic CV as-is — high fit, generic already covers it
+B = Fast CV — 5 min: relabel tagline, rewrite summary, fresh highlights
+C = Targeted Tweak — 20 min: Fast CV + rewrite bullets for 1-2 most relevant roles
+D = Full engine run — high fit, worth doing the full tailored CV properly
 SKIP = Not worth applying
 """
 

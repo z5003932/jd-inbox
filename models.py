@@ -146,6 +146,34 @@ def init_db():
             )
         """)
 
+        # Stories table — career evidence base
+        db.execute(f"""
+            CREATE TABLE IF NOT EXISTS stories (
+                story_id            TEXT PRIMARY KEY,
+                source_file         TEXT,
+                company             TEXT,
+                initiative          TEXT,
+                sub_initiative      TEXT,
+                component           TEXT,
+                component_summary   TEXT,
+                pointer_summary     TEXT,
+                work_behind         TEXT,
+                outcomes            TEXT,
+                year                TEXT,
+                story_type          TEXT,
+                parent_story_id     TEXT,
+                themes              TEXT,
+                skills_demonstrated TEXT,
+                context_type        TEXT,
+                stakeholder_level   TEXT,
+                outcome_type        TEXT,
+                interview_answer_type TEXT,
+                star_story_ready    TEXT,
+                role_relevance      TEXT,
+                created_at          {ts}
+            )
+        """)
+
         # Add any missing columns to existing tables (safe to re-run)
         _migrate(db)
 

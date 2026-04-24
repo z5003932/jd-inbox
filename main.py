@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 from models import init_db, get_db
-from routes import upload, rapid, tier, download, chat, import_jobs
+from routes import upload, rapid, tier, download, chat, import_jobs, stories
 
 # Initialize database on startup
 @asynccontextmanager
@@ -49,11 +49,17 @@ app.include_router(tier.router, prefix="/api", tags=["tier"])
 app.include_router(download.router, prefix="/api", tags=["download"])
 app.include_router(chat.router,         prefix="/api", tags=["chat"])
 app.include_router(import_jobs.router,  prefix="/api", tags=["import"])
+app.include_router(stories.router,      prefix="/api", tags=["stories"])
 
 @app.get("/")
 async def root():
     """Serve the main HTML interface"""
     return FileResponse("static/jd_inbox.html")
+
+@app.get("/stories")
+async def stories_page():
+    """Serve the story bank page"""
+    return FileResponse("static/stories.html")
 
 @app.get("/health")
 async def health_check():

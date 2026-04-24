@@ -104,6 +104,22 @@ async def list_stories(
     }
 
 
+@router.get("/stories/all")
+async def get_all_stories():
+    """Return all stories ordered for hierarchy navigation. No pagination."""
+    with get_db() as db:
+        rows = db.execute(
+            """SELECT story_id, source_file, company, initiative, sub_initiative,
+                      component, component_summary, pointer_summary, work_behind,
+                      outcomes, year, story_type, parent_story_id, themes,
+                      skills_demonstrated, context_type, stakeholder_level,
+                      outcome_type, interview_answer_type, star_story_ready, role_relevance
+               FROM stories
+               ORDER BY company, initiative, sub_initiative, story_id"""
+        ).fetchall()
+    return rows
+
+
 @router.get("/stories/{story_id}")
 async def get_story(story_id: str):
     """Get a single story by ID."""

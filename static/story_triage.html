@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Story Triage — dav</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:            #0a0a0a;
+  --bg-panel:      #111111;
+  --bg-row:        #141414;
+  --bg-hover:      #1c1c1c;
+  --bg-co:         #0f0f0f;
+  --bg-ini:        #111111;
+  --bg-story:      #141414;
+  --bg-detail:     #0d0d0d;
+  --border:        #222222;
+  --border-strong: #333333;
+  --text:          #e0e0e0;
+  --text-dim:      #888888;
+  --text-faint:    #4a4a4a;
+  --accent:        #FF6B35;
+  --green:         #22c55e;
+  --amber:         #eab308;
+  --red:           #ef4444;
+  --blue:          #3b82f6;
+  --purple:        #a855f7;
+  --pin:           #f59e0b;
+  --strong:        #22c55e;
+  --keep:          #3b82f6;
+  --weak:          #6b7280;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Geist', -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ── HEADER ── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  height: 52px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.hd-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.hd-icon { color: var(--accent); }
+.hd-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.hd-search {
+  position: relative;
+  flex: 1;
+  min-width: 160px;
+  max-width: 300px;
+}
+.hd-search input {
+  width: 100%;
+  padding: 6px 10px 6px 28px;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+.hd-search input:focus { border-color: var(--border-strong); }
+.hd-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+select, .hd-btn {
+  padding: 5px 9px;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+select:focus, .hd-btn:hover { border-color: var(--border-strong); color: var(--text); }
+
+.hd-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hd-check input { cursor: pointer; accent-color: var(--accent); }
+
+.hd-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+.hd-nav { color: var(--text-dim); text-decoration: none; font-size: 12px; }
+.hd-nav:hover { color: var(--text); }
+
+/* ── TABLE SHELL ── */
+.table-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+.tbl-header {
+  display: grid;
+  grid-template-columns: 1fr 55px 90px 100px 130px 52px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.tbl-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── ROWS ── */
+.row-co, .row-grp, .row-story {
+  display: grid;
+  grid-template-columns: 1fr 55px 90px 100px 130px 52px;
+  align-items: center;
+  min-height: 34px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 80ms;
+  position: relative;
+}
+
+.row-co {
+  background: var(--bg-co);
+  padding: 0 16px;
+  min-height: 38px;
+}
+.row-co:hover { background: #161616; }
+
+.row-grp {
+  background: var(--bg-ini);
+  padding: 0 16px 0 36px;
+}
+.row-grp:hover { background: var(--bg-hover); }
+
+.row-story {
+  background: var(--bg-story);
+  padding: 0 16px 0 56px;
+}
+.row-story:hover { background: var(--bg-hover); }
+.row-story.focused { background: #1a1a2a; outline: 1px solid var(--blue); outline-offset: -1px; }
+.row-story.hidden-row { opacity: 0.35; }
+.row-story.pinned-row { border-left: 2px solid var(--pin); }
+
+/* ── ROW CELL 1: TITLE ── */
+.cell-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.arrow {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: 10px;
+  color: var(--text-faint);
+  transition: transform 80ms;
+  user-select: none;
+}
+.arrow.open { transform: rotate(90deg); color: var(--text-dim); }
+
+.co-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: 0.03em;
+}
+.co-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.grp-label { font-size: 12px; color: var(--text-dim); min-width: 0; }
+.grp-ini { font-size: 11px; color: var(--text-faint); }
+
+.story-id-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--blue);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.story-summary {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+/* ── ROW CELLS RIGHT ── */
+.cell-year { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); }
+.cell-type { }
+
+.type-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.tb-parent     { background: #1a2744; color: var(--blue); }
+.tb-child      { background: #1e1e1e; color: #555; }
+.tb-standalone { background: #132213; color: var(--green); }
+.tb-achieve    { background: #231830; color: var(--purple); }
+.tb-other      { background: #252010; color: var(--amber); }
+
+.cell-relev { font-size: 11px; color: var(--text-dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* ── RATING BUTTONS ── */
+.cell-rating {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.r-btn {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-faint);
+  transition: all 80ms;
+}
+.r-btn:hover { border-color: var(--border-strong); color: var(--text-dim); }
+.r-btn.active-strong { background: #132213; border-color: var(--strong); color: var(--strong); }
+.r-btn.active-keep   { background: #111e33; border-color: var(--keep); color: var(--keep); }
+.r-btn.active-weak   { background: #1e1e1e; border-color: #555; color: #888; }
+
+/* ── PIN / HIDE ACTIONS ── */
+.cell-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ico-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  transition: all 80ms;
+}
+.ico-btn:hover { background: var(--bg-hover); color: var(--text-dim); }
+.ico-btn.active-pin  { color: var(--pin); }
+.ico-btn.active-hide { color: var(--red); }
+
+/* ── STORY DETAIL ── */
+.story-detail {
+  background: var(--bg-detail);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 16px 16px 72px;
+  display: none;
+}
+.story-detail.open { display: block; }
+
+.detail-headline {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 14px;
+  overflow-wrap: break-word;
+}
+
+.detail-section { margin-bottom: 14px; }
+.detail-section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.bullets {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+}
+
+.bullet-item {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.65;
+  padding-left: 14px;
+  position: relative;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.bullet-item::before {
+  content: '·';
+  position: absolute;
+  left: 2px;
+  color: var(--text-faint);
+}
+
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.meta-tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  overflow-wrap: break-word;
+}
+
+.notes-area {
+  width: 100%;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'Geist', sans-serif;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 60px;
+  outline: none;
+  line-height: 1.5;
+}
+.notes-area:focus { border-color: var(--border-strong); }
+.notes-area::placeholder { color: var(--text-faint); }
+
+/* ── SEARCH HIGHLIGHT ── */
+mark {
+  background: rgba(255, 107, 53, 0.25);
+  color: var(--accent);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ── EMPTY / LOADING ── */
+.state-msg {
+  padding: 48px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* ── KEYBOARD HINT ── */
+.kbd-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: auto;
+  white-space: nowrap;
+}
+kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 1px 4px;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title">
+    <span class="hd-icon">◈</span>
+    Story Triage
+    <span class="hd-badge" id="hd-badge">loading…</span>
+  </div>
+
+  <div class="hd-search">
+    <span class="hd-search-icon">⌕</span>
+    <input type="text" id="search-input" placeholder="Search stories…" autocomplete="off">
+  </div>
+
+  <select id="co-filter"><option value="">All companies</option></select>
+
+  <select id="rating-filter">
+    <option value="">All ratings</option>
+    <option value="strong">Strong</option>
+    <option value="keep">Keep</option>
+    <option value="weak">Weak</option>
+    <option value="unrated">Unrated</option>
+  </select>
+
+  <label class="hd-check"><input type="checkbox" id="show-hidden"> Show hidden</label>
+  <label class="hd-check"><input type="checkbox" id="only-pinned"> Pinned only</label>
+
+  <div class="hd-sep"></div>
+
+  <button class="hd-btn" id="export-json">↓ JSON</button>
+  <button class="hd-btn" id="export-csv">↓ CSV</button>
+  <button class="hd-btn" id="verify-btn" title="Run DOM verification (see console)">✓ Verify</button>
+
+  <div class="hd-sep"></div>
+
+  <span class="kbd-hint"><kbd>P</kbd> pin &nbsp;<kbd>H</kbd> hide &nbsp;<kbd>1-3</kbd> rate &nbsp;<kbd>Enter</kbd> expand</span>
+
+  <a href="/" class="hd-nav">← Inbox</a>
+</header>
+
+<div class="table-shell">
+  <div class="tbl-header">
+    <span>Story</span>
+    <span>Year</span>
+    <span>Type</span>
+    <span>Relevance</span>
+    <span>Rating</span>
+    <span></span>
+  </div>
+  <div class="tbl-body" id="tbl-body">
+    <div class="state-msg">Loading stories…</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const LS_KEY = 'story_triage_v2';
+const SEP    = '\x00'; // hierarchy key separator
+
+// ── State ────────────────────────────────────────────────────────────────────
+const S = {
+  raw:    [],          // all stories from API
+  map:    new Map(),   // story_id → story
+  hier:   {},          // hierarchy tree
+  triage: {},          // story_id → {pinned, hidden, rating, notes}
+  open:   {
+    co:    new Set(),   // company keys
+    grp:   new Set(),   // company+SEP+groupKey
+  },
+  focus:  null,        // currently focused story_id
+  search: '',
+  filter: { co: '', rating: '', showHidden: false, onlyPinned: false },
+};
+
+// ── Triage persistence ───────────────────────────────────────────────────────
+function loadTriage() {
+  try { S.triage = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { S.triage = {}; }
+}
+function saveTriage() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S.triage)); } catch {}
+}
+function t(id) { return S.triage[id] || {}; }
+function setT(id, patch) {
+  S.triage[id] = Object.assign(t(id), patch);
+  saveTriage();
+}
+
+// ── Bullet parsing ───────────────────────────────────────────────────────────
+function parseBullets(ps) {
+  if (!ps) return [];
+  return ps.split('\n').filter(l => l.trim().length > 0);
+}
+
+// ── Hierarchy building ───────────────────────────────────────────────────────
+function buildHierarchy(stories) {
+  const hier = {};
+  for (const s of stories) {
+    const co  = s.company || 'Unknown';
+    const grp = [s.initiative, s.sub_initiative].filter(Boolean).join(' → ') || '(ungrouped)';
+    if (!hier[co]) hier[co] = { groups: {}, count: 0, pinned: 0 };
+    if (!hier[co].groups[grp]) hier[co].groups[grp] = { stories: [], initiative: s.initiative, sub_initiative: s.sub_initiative };
+    hier[co].groups[grp].stories.push(s);
+    hier[co].count++;
+    if (t(s.story_id).pinned) hier[co].pinned++;
+  }
+  return hier;
+}
+
+// ── Filter logic ─────────────────────────────────────────────────────────────
+function storyVisible(s) {
+  const tr = t(s.story_id);
+  if (!S.filter.showHidden && tr.hidden) return false;
+  if (S.filter.onlyPinned && !tr.pinned) return false;
+  if (S.filter.co && s.company !== S.filter.co) return false;
+  if (S.filter.rating) {
+    const r = tr.rating || 'unrated';
+    if (S.filter.rating !== r) return false;
+  }
+  if (S.search) {
+    const q = S.search.toLowerCase();
+    const hay = [s.component_summary, s.pointer_summary, s.outcomes, s.themes, s.skills_demonstrated]
+      .filter(Boolean).join(' ').toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+// ── Safe text node ───────────────────────────────────────────────────────────
+function txt(str) { return document.createTextNode(str || ''); }
+
+function el(tag, cls, children) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (children) {
+    if (Array.isArray(children)) children.forEach(c => c && e.appendChild(typeof c === 'string' ? txt(c) : c));
+    else e.appendChild(typeof children === 'string' ? txt(children) : children);
+  }
+  return e;
+}
+
+// ── Search highlight (DOM-safe) ───────────────────────────────────────────────
+function applyHighlight(container, query) {
+  if (!query) return;
+  const q = query.toLowerCase();
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+
+  for (const node of nodes) {
+    const text = node.textContent;
+    const lower = text.toLowerCase();
+    let idx = lower.indexOf(q);
+    if (idx < 0) continue;
+
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    while (idx >= 0) {
+      if (idx > last) frag.appendChild(txt(text.slice(last, idx)));
+      const mark = document.createElement('mark');
+      mark.appendChild(txt(text.slice(idx, idx + q.length)));
+      frag.appendChild(mark);
+      last = idx + q.length;
+      idx = lower.indexOf(q, last);
+    }
+    if (last < text.length) frag.appendChild(txt(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  }
+}
+
+// ── Type badge ───────────────────────────────────────────────────────────────
+function typeBadge(type) {
+  const cls = { parent: 'tb-parent', child: 'tb-child', standalone: 'tb-standalone',
+    achievement: 'tb-achieve', primary: 'tb-achieve' }[type] || 'tb-other';
+  const span = el('span', `type-badge ${cls}`);
+  span.textContent = type || '—';
+  return span;
+}
+
+// ── Render story detail ───────────────────────────────────────────────────────
+function renderDetail(s) {
+  const div = el('div', 'story-detail');
+  div.id = `detail-${s.story_id}`;
+
+  // Headline
+  if (s.component_summary) {
+    const h = el('p', 'detail-headline');
+    h.textContent = s.component_summary;
+    div.appendChild(h);
+  }
+
+  // Pointer summary bullets
+  const bullets = parseBullets(s.pointer_summary);
+  if (bullets.length) {
+    const sec = el('div', 'detail-section');
+    sec.appendChild(el('div', 'detail-section-label', 'Evidence'));
+    const ul = el('ul', 'bullets');
+    ul.dataset.storyId = s.story_id;
+    bullets.forEach((b, i) => {
+      const li = el('li', 'bullet-item');
+      li.dataset.bulletIdx = i;
+      li.textContent = b;  // safe — no innerHTML
+      ul.appendChild(li);
+    });
+    sec.appendChild(ul);
+    div.appendChild(sec);
+  }
+
+  // Outcomes
+  if (s.outcomes && s.outcomes.trim()) {
+    const sec = el('div', 'detail-section');
+    sec.appendChild(el('div', 'detail-section-label', 'Outcomes'));
+    const p = el('p', 'detail-headline');
+    p.style.fontSize = '12px';
+    p.style.color = 'var(--text-dim)';
+    p.textContent = s.outcomes;
+    sec.appendChild(p);
+    div.appendChild(sec);
+  }
+
+  // Work behind the work
+  if (s.work_behind && s.work_behind.trim()) {
+    const sec = el('div', 'detail-section');
+    sec.appendChild(el('div', 'detail-section-label', 'Work Behind the Work'));
+    const p = el('p', 'detail-headline');
+    p.style.fontSize = '12px';
+    p.style.color = 'var(--text-dim)';
+    p.textContent = s.work_behind;
+    sec.appendChild(p);
+    div.appendChild(sec);
+  }
+
+  // Themes + Skills tags
+  const allTags = [
+    ...(s.themes || '').split(/[,;]/).map(x => x.trim()).filter(Boolean),
+    ...(s.skills_demonstrated || '').split(/[,;]/).map(x => x.trim()).filter(Boolean),
+  ];
+  if (allTags.length) {
+    const sec = el('div', 'detail-section');
+    sec.appendChild(el('div', 'detail-section-label', 'Themes & Skills'));
+    const meta = el('div', 'detail-meta');
+    allTags.forEach(tag => {
+      const t2 = el('span', 'meta-tag');
+      t2.textContent = tag;
+      meta.appendChild(t2);
+    });
+    sec.appendChild(meta);
+    div.appendChild(sec);
+  }
+
+  // Notes
+  const noteSec = el('div', 'detail-section');
+  noteSec.appendChild(el('div', 'detail-section-label', 'Notes'));
+  const ta = el('textarea', 'notes-area');
+  ta.placeholder = 'Add notes…';
+  ta.value = t(s.story_id).notes || '';
+  ta.addEventListener('input', () => {
+    setT(s.story_id, { notes: ta.value });
+  });
+  noteSec.appendChild(ta);
+  div.appendChild(noteSec);
+
+  // Apply search highlight to detail
+  if (S.search) applyHighlight(div, S.search);
+
+  return div;
+}
+
+// ── Render story row ──────────────────────────────────────────────────────────
+function renderStoryRow(s) {
+  const tr  = t(s.story_id);
+  const row = el('div', 'row-story');
+  row.dataset.storyId = s.story_id;
+  if (tr.pinned) row.classList.add('pinned-row');
+  if (tr.hidden) row.classList.add('hidden-row');
+  if (S.focus === s.story_id) row.classList.add('focused');
+
+  // Cell 1: title
+  const cell1 = el('div', 'cell-title');
+  const arrow = el('span', 'arrow');
+  arrow.textContent = '▶';
+  if (S.open.stories && S.open.stories.has(s.story_id)) arrow.classList.add('open');
+  cell1.appendChild(arrow);
+
+  const idLbl = el('span', 'story-id-label');
+  idLbl.textContent = s.story_id;
+  cell1.appendChild(idLbl);
+
+  const sumLbl = el('span', 'story-summary');
+  sumLbl.textContent = s.component_summary || '';
+  cell1.appendChild(sumLbl);
+  row.appendChild(cell1);
+
+  // Cell 2: year
+  const cell2 = el('div', 'cell-year');
+  cell2.textContent = s.year || '';
+  row.appendChild(cell2);
+
+  // Cell 3: type
+  const cell3 = el('div', 'cell-type');
+  cell3.appendChild(typeBadge(s.story_type));
+  row.appendChild(cell3);
+
+  // Cell 4: relevance
+  const cell4 = el('div', 'cell-relev');
+  cell4.textContent = s.role_relevance || '';
+  row.appendChild(cell4);
+
+  // Cell 5: rating
+  const cell5 = el('div', 'cell-rating');
+  ['strong', 'keep', 'weak'].forEach(r => {
+    const btn = el('button', `r-btn${tr.rating === r ? ` active-${r}` : ''}`);
+    btn.textContent = r === 'strong' ? '★' : r === 'keep' ? '✓' : '○';
+    btn.title = r;
+    btn.addEventListener('click', e => { e.stopPropagation(); toggleRating(s.story_id, r); });
+    cell5.appendChild(btn);
+  });
+  row.appendChild(cell5);
+
+  // Cell 6: actions
+  const cell6 = el('div', 'cell-actions');
+  const pinBtn = el('button', `ico-btn${tr.pinned ? ' active-pin' : ''}`);
+  pinBtn.textContent = '⊙';
+  pinBtn.title = tr.pinned ? 'Unpin' : 'Pin';
+  pinBtn.addEventListener('click', e => { e.stopPropagation(); togglePin(s.story_id); });
+
+  const hideBtn = el('button', `ico-btn${tr.hidden ? ' active-hide' : ''}`);
+  hideBtn.textContent = '⊘';
+  hideBtn.title = tr.hidden ? 'Unhide' : 'Hide';
+  hideBtn.addEventListener('click', e => { e.stopPropagation(); toggleHide(s.story_id); });
+
+  cell6.appendChild(pinBtn);
+  cell6.appendChild(hideBtn);
+  row.appendChild(cell6);
+
+  // Click: expand/collapse detail + set focus
+  row.addEventListener('click', () => {
+    S.focus = s.story_id;
+    toggleStoryDetail(s.story_id, row);
+  });
+
+  // Apply highlight to summary
+  if (S.search) applyHighlight(sumLbl, S.search);
+
+  return row;
+}
+
+// ── Toggle story detail ───────────────────────────────────────────────────────
+if (!S.open.stories) S.open.stories = new Set();
+
+function toggleStoryDetail(id, row) {
+  const existingDetail = document.getElementById(`detail-${id}`);
+  if (existingDetail) {
+    const isOpen = existingDetail.classList.contains('open');
+    existingDetail.classList.toggle('open', !isOpen);
+    const arrow = row.querySelector('.arrow');
+    if (arrow) arrow.classList.toggle('open', !isOpen);
+    if (!isOpen) S.open.stories.add(id); else S.open.stories.delete(id);
+  } else {
+    // Render detail lazily and insert after row
+    const s     = S.map.get(id);
+    if (!s) return;
+    const detail = renderDetail(s);
+    detail.classList.add('open');
+    row.insertAdjacentElement('afterend', detail);
+    S.open.stories.add(id);
+    const arrow = row.querySelector('.arrow');
+    if (arrow) arrow.classList.add('open');
+  }
+  // Update focused styling
+  document.querySelectorAll('.row-story.focused').forEach(r => r.classList.remove('focused'));
+  row.classList.add('focused');
+}
+
+// ── Render group (initiative + sub_initiative) ────────────────────────────────
+function renderGroup(co, grpKey, grpData) {
+  const frag    = document.createDocumentFragment();
+  const fullKey = co + SEP + grpKey;
+  const isOpen  = S.open.grp.has(fullKey);
+
+  const visCount = grpData.stories.filter(storyVisible).length;
+  if (visCount === 0) return frag; // skip empty groups
+
+  const row = el('div', 'row-grp');
+  row.dataset.grpKey = fullKey;
+
+  const cell1 = el('div', 'cell-title');
+  const arrow  = el('span', `arrow${isOpen ? ' open' : ''}`);
+  arrow.textContent = '▶';
+  cell1.appendChild(arrow);
+
+  const lbl = el('span', 'grp-label');
+  lbl.textContent = grpData.sub_initiative || grpData.initiative || grpKey;
+  cell1.appendChild(lbl);
+
+  const cnt = el('span', 'co-count');
+  cnt.textContent = ` (${visCount})`;
+  cell1.appendChild(cnt);
+  row.appendChild(cell1);
+
+  // Pad remaining columns
+  for (let i = 0; i < 5; i++) row.appendChild(el('div'));
+
+  const childWrap = el('div');
+  childWrap.id = `grp-${CSS.escape(fullKey)}`;
+  childWrap.style.display = isOpen ? 'block' : 'none';
+
+  if (isOpen) {
+    // Sort: pinned first, then by story_id
+    const sorted = [...grpData.stories].sort((a, b) => {
+      const pa = t(a.story_id).pinned ? 0 : 1;
+      const pb = t(b.story_id).pinned ? 0 : 1;
+      return pa - pb || a.story_id.localeCompare(b.story_id);
+    });
+    sorted.filter(storyVisible).forEach(s => childWrap.appendChild(renderStoryRow(s)));
+  }
+
+  row.addEventListener('click', () => toggleGroup(co, grpKey, row, childWrap, grpData));
+
+  frag.appendChild(row);
+  frag.appendChild(childWrap);
+  return frag;
+}
+
+function toggleGroup(co, grpKey, row, childWrap, grpData) {
+  const fullKey = co + SEP + grpKey;
+  const isOpen  = S.open.grp.has(fullKey);
+  if (isOpen) {
+    S.open.grp.delete(fullKey);
+    childWrap.style.display = 'none';
+    row.querySelector('.arrow').classList.remove('open');
+  } else {
+    S.open.grp.add(fullKey);
+    childWrap.style.display = 'block';
+    row.querySelector('.arrow').classList.add('open');
+    if (!childWrap.children.length) {
+      const sorted = [...grpData.stories].sort((a, b) => {
+        const pa = t(a.story_id).pinned ? 0 : 1;
+        const pb = t(b.story_id).pinned ? 0 : 1;
+        return pa - pb || a.story_id.localeCompare(b.story_id);
+      });
+      sorted.filter(storyVisible).forEach(s => childWrap.appendChild(renderStoryRow(s)));
+    }
+  }
+}
+
+// ── Render company row ────────────────────────────────────────────────────────
+function renderCompany(co, coData) {
+  const frag   = document.createDocumentFragment();
+  const isOpen = S.open.co.has(co);
+
+  // Check if any visible stories exist
+  const hasVisible = Object.values(coData.groups).some(g => g.stories.some(storyVisible));
+  if (!hasVisible) return frag;
+
+  const row = el('div', 'row-co');
+  row.dataset.co = co;
+
+  const cell1 = el('div', 'cell-title');
+  const arrow  = el('span', `arrow${isOpen ? ' open' : ''}`);
+  arrow.textContent = '▶';
+  cell1.appendChild(arrow);
+
+  const name = el('span', 'co-name');
+  name.textContent = co;
+  cell1.appendChild(name);
+
+  const cnt = el('span', 'co-count');
+  cnt.textContent = ` · ${coData.count} stories`;
+  cell1.appendChild(cnt);
+  row.appendChild(cell1);
+
+  for (let i = 0; i < 5; i++) row.appendChild(el('div'));
+
+  const childWrap = el('div');
+  childWrap.id    = `co-${CSS.escape(co)}`;
+  childWrap.style.display = isOpen ? 'block' : 'none';
+
+  if (isOpen) {
+    Object.keys(coData.groups).sort().forEach(gk => {
+      childWrap.appendChild(renderGroup(co, gk, coData.groups[gk]));
+    });
+  }
+
+  row.addEventListener('click', () => toggleCompany(co, row, childWrap, coData));
+  frag.appendChild(row);
+  frag.appendChild(childWrap);
+  return frag;
+}
+
+function toggleCompany(co, row, childWrap, coData) {
+  const isOpen = S.open.co.has(co);
+  if (isOpen) {
+    S.open.co.delete(co);
+    childWrap.style.display = 'none';
+    row.querySelector('.arrow').classList.remove('open');
+  } else {
+    S.open.co.add(co);
+    childWrap.style.display = 'block';
+    row.querySelector('.arrow').classList.add('open');
+    if (!childWrap.children.length) {
+      Object.keys(coData.groups).sort().forEach(gk => {
+        childWrap.appendChild(renderGroup(co, gk, coData.groups[gk]));
+      });
+    }
+  }
+}
+
+// ── Full render ───────────────────────────────────────────────────────────────
+function render() {
+  S.hier = buildHierarchy(S.raw);
+
+  // Populate company filter dropdown
+  const coSel = document.getElementById('co-filter');
+  const existing = new Set(Array.from(coSel.options).map(o => o.value));
+  Object.keys(S.hier).sort().forEach(co => {
+    if (!existing.has(co)) {
+      const opt = document.createElement('option');
+      opt.value = co; opt.textContent = co;
+      coSel.appendChild(opt);
+    }
+  });
+
+  const body = document.getElementById('tbl-body');
+  body.innerHTML = '';
+
+  const frag = document.createDocumentFragment();
+  Object.keys(S.hier).sort().forEach(co => {
+    frag.appendChild(renderCompany(co, S.hier[co]));
+  });
+  body.appendChild(frag);
+
+  updateBadge();
+}
+
+function updateBadge() {
+  const visible  = S.raw.filter(storyVisible).length;
+  const pinned   = S.raw.filter(s => t(s.story_id).pinned).length;
+  const hidden   = S.raw.filter(s => t(s.story_id).hidden).length;
+  const rated    = S.raw.filter(s => t(s.story_id).rating).length;
+  document.getElementById('hd-badge').textContent =
+    `${visible} / ${S.raw.length} · ${pinned} pinned · ${hidden} hidden · ${rated} rated`;
+}
+
+// ── Triage actions ────────────────────────────────────────────────────────────
+function toggleRating(id, r) {
+  const cur = t(id).rating;
+  setT(id, { rating: cur === r ? null : r });
+  render();
+}
+
+function togglePin(id) {
+  setT(id, { pinned: !t(id).pinned });
+  render();
+}
+
+function toggleHide(id) {
+  setT(id, { hidden: !t(id).hidden });
+  render();
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (!S.focus) return;
+
+  switch (e.key.toLowerCase()) {
+    case 'p': e.preventDefault(); togglePin(S.focus); break;
+    case 'h': e.preventDefault(); toggleHide(S.focus); break;
+    case '1': e.preventDefault(); toggleRating(S.focus, 'weak'); break;
+    case '2': e.preventDefault(); toggleRating(S.focus, 'keep'); break;
+    case '3': e.preventDefault(); toggleRating(S.focus, 'strong'); break;
+    case 'enter': {
+      e.preventDefault();
+      const row = document.querySelector(`.row-story[data-story-id="${CSS.escape(S.focus)}"]`);
+      if (row) row.click();
+      break;
+    }
+    case 'arrowdown': case 'j': {
+      e.preventDefault();
+      moveFocus(1);
+      break;
+    }
+    case 'arrowup': case 'k': {
+      e.preventDefault();
+      moveFocus(-1);
+      break;
+    }
+  }
+});
+
+function moveFocus(dir) {
+  const rows    = Array.from(document.querySelectorAll('.row-story'));
+  const visible = rows.filter(r => {
+    const id = r.dataset.storyId;
+    return storyVisible(S.map.get(id));
+  });
+  if (!visible.length) return;
+  const idx = visible.findIndex(r => r.dataset.storyId === S.focus);
+  const next = visible[Math.max(0, Math.min(visible.length - 1, idx + dir))];
+  if (next) {
+    S.focus = next.dataset.storyId;
+    document.querySelectorAll('.row-story.focused').forEach(r => r.classList.remove('focused'));
+    next.classList.add('focused');
+    next.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportJSON() {
+  const out = S.raw.filter(storyVisible).map(s => ({
+    story_id:          s.story_id,
+    company:           s.company,
+    initiative:        s.initiative,
+    sub_initiative:    s.sub_initiative,
+    component_summary: s.component_summary,
+    pointer_summary:   s.pointer_summary,
+    outcomes:          s.outcomes,
+    year:              s.year,
+    story_type:        s.story_type,
+    themes:            s.themes,
+    skills_demonstrated: s.skills_demonstrated,
+    role_relevance:    s.role_relevance,
+    triage:            t(s.story_id),
+  }));
+  download('stories_triage.json', JSON.stringify(out, null, 2), 'application/json');
+}
+
+function exportCSV() {
+  const cols = ['story_id','company','initiative','sub_initiative','component_summary',
+    'year','story_type','role_relevance','rating','pinned','hidden','notes'];
+  const rows = [cols.join(',')];
+  S.raw.filter(storyVisible).forEach(s => {
+    const tr = t(s.story_id);
+    rows.push(cols.map(c => {
+      const v = ['rating','pinned','hidden','notes'].includes(c) ? (tr[c] || '') : (s[c] || '');
+      return `"${String(v).replace(/"/g, '""')}"`;
+    }).join(','));
+  });
+  download('stories_triage.csv', rows.join('\n'), 'text/csv');
+}
+
+function download(filename, content, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Verification ──────────────────────────────────────────────────────────────
+function verifyBullets() {
+  const mismatches = [];
+  let checked = 0;
+  document.querySelectorAll('.bullets[data-story-id]').forEach(ul => {
+    const id      = ul.dataset.storyId;
+    const s       = S.map.get(id);
+    if (!s) return;
+    const source  = parseBullets(s.pointer_summary);
+    ul.querySelectorAll('.bullet-item').forEach(li => {
+      const idx = parseInt(li.dataset.bulletIdx);
+      const expected = source[idx];
+      // Collect textContent from text nodes only (skip mark elements' parents being duplicated)
+      const actual = li.textContent;
+      checked++;
+      if (actual !== expected) {
+        mismatches.push({ id, idx, expected: expected?.slice(0, 80), actual: actual?.slice(0, 80) });
+      }
+    });
+  });
+  if (!mismatches.length) {
+    console.log(`✓ Verification passed — ${checked} bullets checked, all match source`);
+  } else {
+    console.warn(`✗ ${mismatches.length} mismatches in ${checked} bullets:`, mismatches);
+  }
+  return { checked, mismatches };
+}
+
+window.verifyBullets = verifyBullets;
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+let searchTimer = null;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    S.search = e.target.value.trim();
+    S.open.co.clear(); S.open.grp.clear();
+    // Auto-expand all when searching
+    if (S.search) {
+      Object.keys(S.hier).forEach(co => S.open.co.add(co));
+      S.raw.filter(storyVisible).forEach(s => {
+        const grpKey = [s.initiative, s.sub_initiative].filter(Boolean).join(' → ') || '(ungrouped)';
+        S.open.grp.add(s.company + SEP + grpKey);
+      });
+    }
+    render();
+  }, 280);
+});
+
+document.getElementById('co-filter').addEventListener('change', e => {
+  S.filter.co = e.target.value; render();
+});
+document.getElementById('rating-filter').addEventListener('change', e => {
+  S.filter.rating = e.target.value; render();
+});
+document.getElementById('show-hidden').addEventListener('change', e => {
+  S.filter.showHidden = e.target.checked; render();
+});
+document.getElementById('only-pinned').addEventListener('change', e => {
+  S.filter.onlyPinned = e.target.checked; render();
+});
+
+document.getElementById('export-json').addEventListener('click', exportJSON);
+document.getElementById('export-csv').addEventListener('click', exportCSV);
+document.getElementById('verify-btn').addEventListener('click', () => {
+  const result = verifyBullets();
+  alert(`Verification: ${result.checked} bullets checked.\n${result.mismatches.length === 0 ? '✓ All match source.' : `✗ ${result.mismatches.length} mismatches — see console.`}`);
+});
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function init() {
+  loadTriage();
+  try {
+    const resp = await fetch('/api/stories/all');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    S.raw = data;
+    S.map = new Map(data.map(s => [s.story_id, s]));
+    render();
+  } catch (err) {
+    document.getElementById('tbl-body').innerHTML =
+      `<div class="state-msg">Failed to load stories: ${err.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

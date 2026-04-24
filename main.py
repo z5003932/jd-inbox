@@ -61,6 +61,11 @@ async def stories_page():
     """Serve the story bank page"""
     return FileResponse("static/stories.html")
 
+@app.get("/triage")
+async def triage_page():
+    """Serve the story triage page"""
+    return FileResponse("static/story_triage.html")
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""

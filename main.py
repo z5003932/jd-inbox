@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 from models import init_db, get_db
-from routes import upload, rapid, tier, download, chat
+from routes import upload, rapid, tier, download, chat, import_jobs
 
 # Initialize database on startup
 @asynccontextmanager
@@ -47,7 +47,8 @@ app.include_router(upload.router, prefix="/api", tags=["upload"])
 app.include_router(rapid.router, prefix="/api", tags=["rapid"])
 app.include_router(tier.router, prefix="/api", tags=["tier"])
 app.include_router(download.router, prefix="/api", tags=["download"])
-app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(chat.router,         prefix="/api", tags=["chat"])
+app.include_router(import_jobs.router,  prefix="/api", tags=["import"])
 
 @app.get("/")
 async def root():
